@@ -1,0 +1,1900 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ErgoTrack PRO — Analyse Complète Manutention Manuelle</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+:root {
+  --bg:#070f1e; --s1:#0d1b2e; --s2:#132238; --s3:#1a2d47;
+  --border:#1e3d63; --border2:#2a5490;
+  --text:#ddeeff; --dim:#6a90b8; --faint:#2d5070;
+  --blue:#1a7aff; --blue-g:rgba(26,122,255,0.15);
+  --cyan:#00d4ff; --cyan-g:rgba(0,212,255,0.12);
+  --green:#00e096; --green-g:rgba(0,224,150,0.1);
+  --orange:#ff9500; --orange-g:rgba(255,149,0,0.1);
+  --red:#ff3b5c; --red-g:rgba(255,59,92,0.1);
+  --purple:#a855f7; --purple-g:rgba(168,85,247,0.1);
+  --mono:'JetBrains Mono',monospace;
+  --sans:'Inter',sans-serif;
+  --r:10px; --r2:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh}
+
+/* NAV */
+.nav{background:var(--s1);border-bottom:1px solid var(--border);height:52px;display:flex;align-items:center;padding:0 20px;gap:16px;position:sticky;top:0;z-index:300}
+.nav-brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:1rem;color:#fff;letter-spacing:-0.5px}
+.nav-icon{width:30px;height:30px;background:linear-gradient(135deg,var(--blue),var(--cyan));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.nav-tag{font-family:var(--mono);font-size:.6rem;background:var(--blue-g);border:1px solid var(--blue);color:var(--blue);padding:2px 6px;border-radius:4px}
+.nav-tabs{display:flex;gap:2px;margin-left:20px}
+.nav-tab{padding:6px 14px;border-radius:6px;font-size:.8rem;font-weight:500;cursor:pointer;color:var(--dim);background:transparent;border:none;transition:all .2s;font-family:var(--sans)}
+.nav-tab:hover{color:var(--text);background:var(--s2)}
+.nav-tab.active{color:#fff;background:var(--s3);border:1px solid var(--border)}
+.nav-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+.sid{font-family:var(--mono);font-size:.65rem;color:var(--faint)}
+
+/* PAGES */
+.page{display:none;padding:20px;max-width:1300px;margin:0 auto}
+.page.active{display:block}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.gcol-left{display:flex;flex-direction:column;gap:16px}
+.gcol-right{display:flex;flex-direction:column;gap:16px}
+.layout-obs{display:grid;grid-template-columns:360px 1fr;gap:16px}
+
+/* CARD */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden}
+.card-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.015)}
+.card-icon{font-size:13px;width:22px;text-align:center}
+.card-title{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--dim)}
+.card-badge{margin-left:auto;font-family:var(--mono);font-size:.65rem;padding:2px 7px;border-radius:4px;background:var(--s3);color:var(--dim);border:1px solid var(--border)}
+.card-body{padding:16px}
+
+/* FORM */
+.field{margin-bottom:12px}
+.field:last-child{margin-bottom:0}
+.lbl{display:block;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--faint);margin-bottom:5px}
+.lbl span{color:var(--red);margin-left:2px}
+input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--sans);font-size:.88rem;padding:9px 12px;outline:none;transition:border .2s,box-shadow .2s}
+input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,122,255,.15)}
+input::placeholder,textarea::placeholder{color:var(--faint)}
+select option{background:var(--s2)}
+textarea{resize:vertical;min-height:70px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.row4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
+
+/* BUTTONS */
+.btn{border:none;border-radius:7px;font-family:var(--sans);font-size:.83rem;font-weight:600;cursor:pointer;padding:9px 16px;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;letter-spacing:.1px}
+.btn:disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
+.btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{background:#1568e8}
+.btn-green{background:var(--green);color:#001a0e}.btn-green:hover{background:#00c480}
+.btn-orange{background:var(--orange);color:#1a0800}.btn-orange:hover{background:#e08600}
+.btn-red{background:var(--red);color:#fff}.btn-red:hover{background:#e02347}
+.btn-ghost{background:var(--s2);border:1px solid var(--border);color:var(--dim)}.btn-ghost:hover{border-color:var(--border2);color:var(--text)}
+.btn-cyan{background:var(--cyan);color:#001520}.btn-cyan:hover{background:#00b8e0}
+.btn-purple{background:var(--purple);color:#fff}.btn-purple:hover{background:#9333e0}
+.btn-lg{padding:12px 20px;font-size:.92rem;border-radius:9px}
+.btn-xl{padding:16px 20px;font-size:1.05rem;font-weight:700;border-radius:11px;width:100%}
+.btn-full{width:100%}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+
+/* TIMER */
+.timer-wrap{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px;text-align:center;margin-bottom:14px}
+.timer-dig{font-family:var(--mono);font-size:2.6rem;font-weight:600;letter-spacing:5px;color:#fff;margin-bottom:3px;transition:color .3s}
+.timer-dig.run{color:var(--green);text-shadow:0 0 25px rgba(0,224,150,.3)}
+.timer-dig.pause{color:var(--orange)}
+.timer-dig.done{color:var(--cyan)}
+.timer-lbl{font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--faint)}
+
+/* LEVAGE BTN */
+.levage-btn{background:linear-gradient(135deg,#1a7aff,#0058cc);color:#fff;border:none;border-radius:11px;font-family:var(--sans);font-size:1.1rem;font-weight:800;cursor:pointer;padding:20px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s;box-shadow:0 4px 24px rgba(26,122,255,.3);letter-spacing:.3px;position:relative;overflow:hidden}
+.levage-btn:before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.1),transparent);opacity:0;transition:opacity .2s}
+.levage-btn:hover:not(:disabled):before{opacity:1}
+.levage-btn:active:not(:disabled){transform:scale(.96)}
+.levage-btn:disabled{background:var(--s3);box-shadow:none;cursor:not-allowed;opacity:.4}
+.levage-hint{font-size:.68rem;color:var(--faint);text-align:center;margin-top:6px}
+
+/* KPI STRIP */
+.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.kpi{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;text-align:center}
+.kpi-val{font-family:var(--mono);font-size:1.25rem;font-weight:700;color:#fff;line-height:1;margin-bottom:3px}
+.kpi-val.g{color:var(--green)}.kpi-val.o{color:var(--orange)}.kpi-val.r{color:var(--red)}.kpi-val.b{color:var(--cyan)}
+.kpi-key{font-size:.65rem;text-transform:uppercase;letter-spacing:.5px;color:var(--faint)}
+
+/* GAUGE */
+.gauge-area{display:flex;flex-direction:column;align-items:center;padding:16px 12px 8px}
+.gauge-svg{width:200px;height:120px;overflow:visible}
+.g-track{fill:none;stroke:#1a2d47;stroke-width:13;stroke-linecap:round}
+.g-fill{fill:none;stroke:var(--green);stroke-width:13;stroke-linecap:round;stroke-dasharray:0 251;transition:stroke-dasharray .5s ease,stroke .4s}
+.g-val{text-anchor:middle;font-family:var(--mono);font-size:22px;font-weight:700;fill:#fff}
+.g-sub{text-anchor:middle;font-family:var(--sans);font-size:9px;text-transform:uppercase;letter-spacing:1.5px;fill:var(--faint)}
+.gauge-kpis{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;width:100%;margin-top:12px}
+.gk{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px;text-align:center}
+.gk-v{font-family:var(--mono);font-size:1rem;font-weight:600;color:#fff}
+.gk-k{font-size:.63rem;text-transform:uppercase;color:var(--faint);margin-top:2px}
+
+/* ALERT LIVE */
+.alert{padding:11px 14px;border-radius:8px;font-size:.83rem;font-weight:500;display:flex;align-items:center;gap:8px;transition:all .4s}
+.alert.idle{background:var(--s2);border:1px solid var(--border);color:var(--faint)}
+.alert.ok{background:var(--green-g);border:1px solid var(--green);color:var(--green)}
+.alert.warn{background:var(--orange-g);border:1px solid var(--orange);color:var(--orange)}
+.alert.danger{background:var(--red-g);border:1px solid var(--red);color:var(--red)}
+
+/* PROGRESS BAR */
+.pbar-wrap{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.pbar-row{display:flex;justify-content:space-between;font-size:.7rem;color:var(--faint);margin-bottom:5px}
+.pbar-row span:last-child{font-family:var(--mono)}
+.pbar-outer{height:5px;background:var(--s3);border-radius:3px;overflow:hidden}
+.pbar-inner{height:100%;border-radius:3px;background:var(--green);transition:width .4s ease,background .4s}
+
+/* LOG TABLE */
+.log-wrap{background:var(--bg);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.log-head{display:grid;grid-template-columns:40px 80px 70px 75px 70px 1fr;padding:7px 12px;background:var(--s2);border-bottom:1px solid var(--border);font-size:.65rem;text-transform:uppercase;letter-spacing:.5px;color:var(--faint);font-weight:600}
+.log-body{max-height:220px;overflow-y:auto}
+.log-body::-webkit-scrollbar{width:3px}.log-body::-webkit-scrollbar-thumb{background:var(--border2)}
+.log-row{display:grid;grid-template-columns:40px 80px 70px 75px 70px 1fr;padding:7px 12px;border-bottom:1px solid rgba(30,61,99,.4);font-size:.8rem;font-family:var(--mono);animation:ri .2s ease}
+.log-row:last-child{border-bottom:none}
+.log-row:hover{background:var(--s2)}
+@keyframes ri{from{opacity:0;transform:translateX(-5px)}to{opacity:1;transform:none}}
+.lc-n{color:var(--faint)}.lc-t{color:var(--cyan)}.lc-p{color:#fff;font-weight:600}.lc-c{color:var(--dim)}.lc-r{font-size:.7rem}.lc-r.ok{color:var(--green)}.lc-r.warn{color:var(--orange)}.lc-n2{color:var(--dim);font-size:.75rem}
+.log-empty{padding:24px;text-align:center;color:var(--faint);font-size:.78rem}
+
+/* POSTURE CHECK */
+.posture-list{display:flex;flex-direction:column;gap:7px}
+.pcheck{display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 13px;cursor:pointer;transition:all .2s;user-select:none}
+.pcheck:hover{border-color:var(--border2)}
+.pcheck.sel{border-color:var(--orange);background:var(--orange-g)}
+.pcheck input{display:none}
+.pchk-box{width:17px;height:17px;border:2px solid var(--border2);border-radius:4px;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:10px;color:transparent;transition:all .2s;flex-shrink:0}
+.pcheck.sel .pchk-box{background:var(--orange);border-color:var(--orange);color:#fff}
+.pchk-info{flex:1}
+.pchk-name{font-size:.85rem;font-weight:500}
+.pchk-desc{font-size:.7rem;color:var(--dim);margin-top:1px}
+.pchk-pen{font-family:var(--mono);font-size:.73rem;padding:2px 6px;border-radius:4px;background:var(--s2);border:1px solid var(--border);color:var(--faint);flex-shrink:0}
+.pcheck.sel .pchk-pen{background:var(--orange-g);border-color:var(--orange);color:var(--orange)}
+
+/* NIOSH */
+.niosh-result{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:14px}
+.niosh-rwl{text-align:center;margin-bottom:12px}
+.niosh-rwl-val{font-family:var(--mono);font-size:2rem;font-weight:700;color:var(--cyan)}
+.niosh-rwl-lbl{font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--faint);margin-top:2px}
+.niosh-li{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(30,61,99,.4)}
+.niosh-li:last-child{border:none}
+.niosh-li span:first-child{font-size:.78rem;color:var(--dim)}
+.niosh-li strong{font-family:var(--mono);font-size:.83rem;color:#fff}
+.li-badge{display:inline-block;padding:3px 8px;border-radius:4px;font-size:.75rem;font-weight:700;font-family:var(--mono)}
+.li-ok{background:var(--green-g);color:var(--green);border:1px solid var(--green)}
+.li-warn{background:var(--orange-g);color:var(--orange);border:1px solid var(--orange)}
+.li-danger{background:var(--red-g);color:var(--red);border:1px solid var(--red)}
+.coeff-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.coeff-item{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center}
+.coeff-item span:first-child{font-size:.72rem;color:var(--dim)}
+.coeff-item strong{font-family:var(--mono);font-size:.8rem;color:#fff}
+
+/* MAC GRID */
+.mac-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mac-item{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px}
+.mac-lbl{font-size:.68rem;text-transform:uppercase;letter-spacing:.6px;color:var(--faint);margin-bottom:6px;font-weight:600}
+.mac-score-row{display:flex;gap:5px}
+.mac-btn{flex:1;padding:7px 4px;border:1px solid var(--border);background:var(--s2);border-radius:5px;color:var(--dim);font-size:.8rem;font-weight:600;cursor:pointer;text-align:center;transition:all .15s;font-family:var(--sans)}
+.mac-btn:hover{border-color:var(--border2)}
+.mac-btn.sel-0{background:var(--green-g);border-color:var(--green);color:var(--green)}
+.mac-btn.sel-1{background:rgba(0,224,150,.06);border-color:#00a868;color:#00c478}
+.mac-btn.sel-2{background:var(--orange-g);border-color:var(--orange);color:var(--orange)}
+.mac-btn.sel-3{background:var(--red-g);border-color:var(--red);color:var(--red)}
+.mac-total{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;margin-top:8px}
+.mac-total-val{font-family:var(--mono);font-size:1.8rem;font-weight:700}
+.mac-total-lbl{font-size:.68rem;text-transform:uppercase;color:var(--faint);letter-spacing:.8px}
+
+/* KIM */
+.kim-section{margin-bottom:14px}
+.kim-section-title{font-size:.72rem;text-transform:uppercase;letter-spacing:.7px;color:var(--dim);font-weight:700;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.kim-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.kim-row label{font-size:.8rem;color:var(--dim);width:160px;flex-shrink:0}
+.kim-row input,.kim-row select{flex:1}
+.kim-result-box{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:14px;text-align:center}
+.kim-score-val{font-family:var(--mono);font-size:2.2rem;font-weight:700;color:var(--cyan)}
+.kim-risk-label{font-size:.8rem;color:var(--dim);margin-top:4px}
+
+/* REBA */
+.reba-body-svg{width:100%;max-width:220px;display:block;margin:0 auto}
+.reba-section{margin-bottom:12px}
+.reba-title{font-size:.7rem;text-transform:uppercase;letter-spacing:.7px;color:var(--cyan);font-weight:700;margin-bottom:6px}
+.reba-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.reba-row label{font-size:.78rem;color:var(--dim);width:130px;flex-shrink:0}
+.reba-row select{flex:1}
+.reba-score-box{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:14px;text-align:center;margin-top:10px}
+.reba-score-val{font-family:var(--mono);font-size:2.2rem;font-weight:700}
+.reba-action{font-size:.78rem;color:var(--dim);margin-top:4px}
+
+/* PLAN ACTION */
+.action-list{display:flex;flex-direction:column;gap:8px}
+.action-item{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:12px 14px;display:flex;align-items:flex-start;gap:10px;transition:border-color .2s}
+.action-item:hover{border-color:var(--border2)}
+.action-item.done{opacity:.6;border-style:dashed}
+.action-prio{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0}
+.prio-1{background:var(--red-g);color:var(--red);border:1px solid var(--red)}
+.prio-2{background:var(--orange-g);color:var(--orange);border:1px solid var(--orange)}
+.prio-3{background:var(--green-g);color:var(--green);border:1px solid var(--green)}
+.action-content{flex:1}
+.action-title{font-size:.88rem;font-weight:600;color:var(--text)}
+.action-meta{font-size:.72rem;color:var(--dim);margin-top:3px}
+.action-status{font-size:.7rem;padding:2px 7px;border-radius:4px;border:1px solid var(--border);color:var(--faint);cursor:pointer;background:var(--s2);font-family:var(--sans)}
+.action-empty{padding:20px;text-align:center;color:var(--faint);font-size:.8rem}
+
+/* HISTORIQUE */
+.hist-list{display:flex;flex-direction:column;gap:6px}
+.hist-item{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:border-color .2s}
+.hist-item:hover{border-color:var(--border2)}
+.hist-name{font-size:.85rem;font-weight:500}
+.hist-meta{font-size:.7rem;color:var(--dim);margin-top:2px}
+.hist-badge{font-family:var(--mono);font-size:.7rem;padding:3px 8px;border-radius:4px;font-weight:600}
+.hb-ok{background:var(--green-g);color:var(--green);border:1px solid var(--green)}
+.hb-warn{background:var(--orange-g);color:var(--orange);border:1px solid var(--orange)}
+.hb-danger{background:var(--red-g);color:var(--red);border:1px solid var(--red)}
+
+/* CHART WRAP */
+.chart-wrap{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:14px;position:relative}
+.chart-wrap canvas{max-height:200px}
+
+/* MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(5,10,24,.92);backdrop-filter:blur(5px);z-index:500;align-items:center;justify-content:center;padding:16px}
+.overlay.open{display:flex}
+.modal{background:var(--s1);border:1px solid var(--border2);border-radius:var(--r2);width:100%;max-width:640px;max-height:90vh;overflow-y:auto;animation:mi .25s ease}
+@keyframes mi{from{opacity:0;transform:scale(.95) translateY(10px)}to{opacity:1;transform:none}}
+.modal-head{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.modal-title{font-size:1rem;font-weight:700;color:#fff}
+.modal-sub{font-size:.75rem;color:var(--dim);margin-top:3px}
+.modal-close{width:28px;height:28px;background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;transition:all .2s}
+.modal-close:hover{color:var(--text)}
+.modal-body{padding:18px 22px}
+.modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap}
+.msec{margin-bottom:18px}
+.msec:last-child{margin-bottom:0}
+.msec-title{font-size:.68rem;text-transform:uppercase;letter-spacing:.8px;color:var(--faint);font-weight:700;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.rrow{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(30,61,99,.35);font-size:.85rem}
+.rrow:last-child{border:none}
+.rrow span:first-child{color:var(--dim)}
+.rrow strong{font-family:var(--mono);font-size:.88rem;color:#fff}
+.verdict-box{padding:18px;border-radius:10px;text-align:center;margin:14px 0}
+.verdict-box.ok{background:var(--green-g);border:1px solid var(--green)}
+.verdict-box.warn{background:var(--orange-g);border:1px solid var(--orange)}
+.verdict-box.danger{background:var(--red-g);border:1px solid var(--red)}
+.verdict-icon{font-size:2rem;margin-bottom:7px}
+.verdict-title{font-size:1rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}
+.verdict-title.ok{color:var(--green)}.verdict-title.warn{color:var(--orange)}.verdict-title.danger{color:var(--red)}
+.verdict-desc{font-size:.8rem;color:var(--dim);line-height:1.5}
+.reco-list{display:flex;flex-direction:column;gap:6px}
+.reco-item{background:var(--bg);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:6px;padding:9px 13px;font-size:.8rem;color:var(--dim);line-height:1.4}
+.reco-item strong{color:var(--text);display:block;margin-bottom:2px;font-size:.82rem}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:9px 18px;font-size:.83rem;color:var(--text);z-index:1000;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+
+/* PAGE HEADER */
+.page-header{margin-bottom:20px}
+.page-header h2{font-size:1.2rem;font-weight:800;color:#fff;margin-bottom:4px}
+.page-header p{font-size:.82rem;color:var(--dim)}
+
+/* SECTION DIVIDER */
+.sdiv{display:flex;align-items:center;gap:10px;margin:16px 0 12px;font-size:.7rem;text-transform:uppercase;letter-spacing:.8px;color:var(--faint);font-weight:600}
+.sdiv::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* INFO BOX */
+.info-box{background:var(--blue-g);border:1px solid var(--blue);border-radius:8px;padding:10px 13px;font-size:.8rem;color:var(--dim);line-height:1.5;margin-bottom:12px}
+.info-box strong{color:var(--text)}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .layout-obs{grid-template-columns:1fr}
+  .g2,.g3,.g4{grid-template-columns:1fr 1fr}
+  .kpi-strip{grid-template-columns:1fr 1fr}
+}
+@media(max-width:600px){
+  .g2,.g3,.g4{grid-template-columns:1fr}
+  .nav-tabs{display:none}
+  .log-head,.log-row{grid-template-columns:35px 70px 60px 65px 60px}
+  .log-head>:last-child,.log-row>:last-child{display:none}
+}
+
+/* SIGNATURE: scan line sur le header nav */
+.nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--blue),var(--cyan),transparent);opacity:.5}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-brand">
+    <div class="nav-icon">⚖</div>
+    ErgoTrack <span style="color:var(--cyan);margin-left:2px">PRO</span>
+    <span class="nav-tag">v3.0</span>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="goPage('obs')">📡 Observation</button>
+    <button class="nav-tab" onclick="goPage('niosh')">🔬 NIOSH</button>
+    <button class="nav-tab" onclick="goPage('mac')">📋 MAC / KIM</button>
+    <button class="nav-tab" onclick="goPage('reba')">🦴 REBA</button>
+    <button class="nav-tab" onclick="goPage('actions')">✅ Plan d'action</button>
+    <button class="nav-tab" onclick="goPage('historique')">🗂 Historique</button>
+  </div>
+  <div class="nav-right">
+    <span class="sid" id="sid">—</span>
+    <button class="btn btn-ghost" style="font-size:.72rem;padding:5px 10px" onclick="exportCSV()">📥 CSV</button>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE 1 : OBSERVATION TERRAIN
+═══════════════════════════════════════════════════════════ -->
+<div class="page active" id="page-obs">
+<div class="layout-obs" style="padding-top:0">
+
+  <!-- COLONNE GAUCHE -->
+  <div class="gcol-left">
+
+    <!-- Identification -->
+    <div class="card">
+      <div class="card-head"><span class="card-icon">🏷</span><span class="card-title">Identification du poste</span></div>
+      <div class="card-body">
+        <div class="field"><label class="lbl">Poste de travail<span>*</span></label>
+          <input id="poste" placeholder="Ex : Agent de piste — manutention bagages"></div>
+        <div class="row3">
+          <div class="field"><label class="lbl">Opérateur</label><input id="operateur" placeholder="Anonyme"></div>
+          <div class="field"><label class="lbl">Entité / Site</label><input id="entite" placeholder="CDG T2"></div>
+          <div class="field"><label class="lbl">Genre</label>
+            <select id="genre"><option value="H">Homme</option><option value="F">Femme</option></select></div>
+        </div>
+        <div class="row4">
+          <div class="field"><label class="lbl">Âge</label><input id="age" type="number" min="16" max="70" placeholder="35"></div>
+          <div class="field"><label class="lbl">Poids charge (kg)<span>*</span></label><input id="poids" type="number" min="0.1" step="0.1" placeholder="23"></div>
+          <div class="field"><label class="lbl">Distance transport (m)</label><input id="distTransport" type="number" min="0" step="0.5" placeholder="2"></div>
+          <div class="field"><label class="lbl">Durée poste</label>
+            <select id="dureePoste"><option value="2">2 h</option><option value="4">4 h</option><option value="6">6 h</option><option value="7" selected>7 h</option><option value="8">8 h</option></select></div>
+        </div>
+        <div class="field"><label class="lbl">Type de prise</label>
+          <select id="typePrise">
+            <option value="two_good">Deux mains — bonne prise (poignées)</option>
+            <option value="two_avg">Deux mains — prise acceptable</option>
+            <option value="two_bad">Deux mains — mauvaise prise</option>
+            <option value="one">Une main</option>
+            <option value="pinch">Pince / crochets</option>
+          </select></div>
+        <div class="field"><label class="lbl">Notes terrain</label>
+          <textarea id="notes" placeholder="Observations libres sur le contexte du poste…"></textarea></div>
+      </div>
+    </div>
+
+    <!-- Chrono -->
+    <div class="card">
+      <div class="card-head"><span class="card-icon">⏱</span><span class="card-title">Chronométrage</span></div>
+      <div class="card-body">
+        <div class="timer-wrap">
+          <div class="timer-dig" id="timerDig">00:00:00</div>
+          <div class="timer-lbl" id="timerLbl">EN ATTENTE</div>
+        </div>
+        <div class="row2">
+          <button class="btn btn-green btn-lg btn-full" id="btnStart" onclick="toggleTimer()">▶ Démarrer</button>
+          <button class="btn btn-ghost btn-lg btn-full" id="btnStop" onclick="stopTimer()" disabled>⏹ Arrêter</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Postures -->
+    <div class="card">
+      <div class="card-head"><span class="card-icon">🦴</span><span class="card-title">Facteurs posturaux aggravants</span></div>
+      <div class="card-body">
+        <div class="posture-list">
+          <label class="pcheck" id="pi0"><input type="checkbox" id="chk0" onchange="onPosture(0)">
+            <div class="pchk-box" id="pb0">✓</div>
+            <div class="pchk-info"><div class="pchk-name">Dos fléchi / Tronc incliné > 20°</div><div class="pchk-desc">Contrainte lombaire majorée en charge</div></div>
+            <div class="pchk-pen">−25%</div></label>
+          <label class="pcheck" id="pi1"><input type="checkbox" id="chk1" onchange="onPosture(1)">
+            <div class="pchk-box" id="pb1">✓</div>
+            <div class="pchk-info"><div class="pchk-name">Torsion / Pivotement axial</div><div class="pchk-desc">Stress discal asymétrique en charge</div></div>
+            <div class="pchk-pen">−25%</div></label>
+          <label class="pcheck" id="pi2"><input type="checkbox" id="chk2" onchange="onPosture(2)">
+            <div class="pchk-box" id="pb2">✓</div>
+            <div class="pchk-info"><div class="pchk-name">Hauteur critique (sol ou au-dessus des épaules)</div><div class="pchk-desc">Prise < 30 cm ou > 130 cm</div></div>
+            <div class="pchk-pen">−20%</div></label>
+          <label class="pcheck" id="pi3"><input type="checkbox" id="chk3" onchange="onPosture(3)">
+            <div class="pchk-box" id="pb3">✓</div>
+            <div class="pchk-info"><div class="pchk-name">Charge tenue à distance du corps</div><div class="pchk-desc">Bras tendus > 40 cm — levier défavorable</div></div>
+            <div class="pchk-pen">−15%</div></label>
+          <label class="pcheck" id="pi4"><input type="checkbox" id="chk4" onchange="onPosture(4)">
+            <div class="pchk-box" id="pb4">✓</div>
+            <div class="pchk-info"><div class="pchk-name">Position statique prolongée</div><div class="pchk-desc">Maintien de la posture > 4 sec par levage</div></div>
+            <div class="pchk-pen">−10%</div></label>
+        </div>
+        <div class="pbar-wrap" style="margin-top:10px">
+          <div class="pbar-row"><span>Pénalité posturale cumulée</span><span id="penPct" style="color:var(--orange)">0%</span></div>
+          <div class="pbar-outer"><div class="pbar-inner" id="penBar" style="width:0%;background:var(--orange)"></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /gcol-left -->
+
+  <!-- COLONNE DROITE -->
+  <div class="gcol-right">
+
+    <!-- KPI -->
+    <div class="kpi-strip">
+      <div class="kpi"><div class="kpi-val" id="kLevages">0</div><div class="kpi-key">Levages</div></div>
+      <div class="kpi"><div class="kpi-val b" id="kMasse">0.0</div><div class="kpi-key">kg total</div></div>
+      <div class="kpi"><div class="kpi-val" id="kRythme">—</div><div class="kpi-key">/ min</div></div>
+      <div class="kpi"><div class="kpi-val" id="kDist">0</div><div class="kpi-key">m cumulés</div></div>
+    </div>
+
+    <!-- Jauge -->
+    <div class="card">
+      <div class="card-head"><span class="card-icon">📡</span><span class="card-title">Charge relative vs seuil réglementaire</span></div>
+      <div class="gauge-area">
+        <svg class="gauge-svg" viewBox="0 0 200 120" id="gSvg">
+          <path class="g-track" d="M 14 106 A 86 86 0 0 1 186 106"/>
+          <path class="g-fill" id="gFill" d="M 14 106 A 86 86 0 0 1 186 106"/>
+          <text class="g-val" id="gVal" x="100" y="96">0%</text>
+          <text class="g-sub" x="100" y="112">charge relative</text>
+        </svg>
+        <div class="gauge-kpis">
+          <div class="gk"><div class="gk-v" id="gSeuil">7500</div><div class="gk-k">Seuil régl. kg</div></div>
+          <div class="gk"><div class="gk-v" id="gSeuilAdj">7500</div><div class="gk-k">Seuil ajusté kg</div></div>
+          <div class="gk"><div class="gk-v" id="gRestant">7500</div><div class="gk-k">Restant kg</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alert + seuil genre -->
+    <div id="alertLive" class="alert idle">💤 En attente de démarrage</div>
+    <div class="info-box" id="genreInfo">
+      ℹ️ Seuil journalier : <strong id="seuilGenreLabel">7 500 kg</strong> (Homme, décret ergonomique FR / EN 1005-2). Les postures cochées réduisent ce seuil par pénalité NIOSH.
+    </div>
+
+    <!-- Saisie levage -->
+    <div class="card">
+      <div class="card-head"><span class="card-icon">📦</span><span class="card-title">Saisie des levages en temps réel</span></div>
+      <div class="card-body">
+        <button class="levage-btn" id="btnLevage" onclick="enrLevage()" disabled>📦 ENREGISTRER UN LEVAGE</button>
+        <div class="levage-hint">Appuyer à chaque prise de charge observée sur le terrain</div>
+        <div class="pbar-wrap" style="margin-top:10px">
+          <div class="pbar-row"><span>Tonnage vs seuil ajusté</span><span id="pbPct">0%</span></div>
+          <div class="pbar-outer"><div class="pbar-inner" id="pbBar" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="card">
+      <div class="card-head"><span class="card-icon">📝</span><span class="card-title">Journal des levages</span><span class="card-badge" id="logBadge">0 entrées</span></div>
+      <div class="card-body" style="padding:0">
+        <div class="log-wrap" style="border:none;border-radius:0">
+          <div class="log-head"><span>#</span><span>Temps</span><span>Poids</span><span>Cumulé</span><span>/min</span><span>Notes</span></div>
+          <div class="log-body" id="logBody"><div class="log-empty" id="logEmpty">Aucun levage enregistré</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Graphique cadence -->
+    <div class="card">
+      <div class="card-head"><span class="card-icon">📈</span><span class="card-title">Cadence dans le temps</span></div>
+      <div class="card-body">
+        <div class="chart-wrap"><canvas id="chartCadence"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Bouton analyse -->
+    <button class="btn btn-red btn-xl" onclick="lancerAnalyse()">
+      📊 GÉNÉRER L'ANALYSE COMPLÈTE
+    </button>
+
+  </div><!-- /gcol-right -->
+</div>
+</div><!-- /page-obs -->
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE 2 : NIOSH
+═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-niosh">
+<div class="page-header">
+  <h2>🔬 Équation NIOSH — Limite de Poids Recommandée</h2>
+  <p>Calcul de la LPR (Limite de Poids Recommandée) et de l'Indice de Levage selon la méthode NIOSH 1994</p>
+</div>
+<div class="g2">
+  <div class="gcol-left">
+    <div class="card">
+      <div class="card-head"><span class="card-icon">📐</span><span class="card-title">Paramètres de la tâche</span></div>
+      <div class="card-body">
+        <div class="info-box"><strong>LPR = 23 kg × HM × VM × DM × AM × FM × CM</strong><br>Chaque coefficient réduit la charge maximale admissible selon les conditions réelles du levage.</div>
+        <div class="sdiv">Localisation de la prise</div>
+        <div class="row2">
+          <div class="field"><label class="lbl">Distance horizontale H (cm)</label>
+            <input id="nH" type="number" min="25" max="63" value="35" placeholder="25–63 cm" oninput="calcNiosh()"></div>
+          <div class="field"><label class="lbl">Hauteur de prise V (cm)</label>
+            <input id="nV" type="number" min="0" max="175" value="75" placeholder="0–175 cm" oninput="calcNiosh()"></div>
+        </div>
+        <div class="sdiv">Déplacement vertical</div>
+        <div class="field"><label class="lbl">Distance verticale D (cm)</label>
+          <input id="nD" type="number" min="0" max="175" value="25" placeholder="0–175 cm" oninput="calcNiosh()"></div>
+        <div class="sdiv">Asymétrie & fréquence</div>
+        <div class="row2">
+          <div class="field"><label class="lbl">Angle d'asymétrie A (°)</label>
+            <input id="nA" type="number" min="0" max="135" value="0" placeholder="0–135°" oninput="calcNiosh()"></div>
+          <div class="field"><label class="lbl">Fréquence F (levages/min)</label>
+            <input id="nF" type="number" min="0.2" max="15" step="0.1" value="1" placeholder="ex: 2" oninput="calcNiosh()"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label class="lbl">Durée tâche</label>
+            <select id="nDur" onchange="calcNiosh()">
+              <option value="short">≤ 1 h</option>
+              <option value="mod" selected>1–2 h</option>
+              <option value="long">2–8 h</option>
+            </select></div>
+          <div class="field"><label class="lbl">Qualité de prise</label>
+            <select id="nCM" onchange="calcNiosh()">
+              <option value="1.0">Bonne (1.0)</option>
+              <option value="0.95" selected>Acceptable (0.95)</option>
+              <option value="0.9">Mauvaise (0.90)</option>
+            </select></div>
+        </div>
+        <div class="field"><label class="lbl">Poids réel de la charge (kg)</label>
+          <input id="nPoids" type="number" min="1" step="0.5" value="23" oninput="calcNiosh()"></div>
+      </div>
+    </div>
+  </div>
+  <div class="gcol-right">
+    <div class="card">
+      <div class="card-head"><span class="card-icon">📊</span><span class="card-title">Résultats NIOSH</span></div>
+      <div class="card-body">
+        <div class="niosh-result">
+          <div class="niosh-rwl">
+            <div class="niosh-rwl-val" id="nRWL">—</div>
+            <div class="niosh-rwl-lbl">LPR — Limite de Poids Recommandée (kg)</div>
+          </div>
+          <div class="niosh-li">
+            <span>Indice de Levage (IL = Poids réel / LPR)</span>
+            <span id="nIL_badge" class="li-badge li-ok">—</span>
+          </div>
+          <div class="niosh-li"><span>Poids réel saisi</span><strong id="nPoidsAff">—</strong></div>
+          <div class="sdiv">Coefficients de réduction</div>
+          <div class="coeff-grid" id="nioshCoeffs"></div>
+        </div>
+        <div class="info-box" style="margin-top:12px">
+          <strong>Interprétation IL :</strong> IL ≤ 1.0 = Acceptable · 1.0–3.0 = Risque modéré · > 3.0 = Risque élevé, intervention requise
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE 3 : MAC / KIM
+═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-mac">
+<div class="page-header">
+  <h2>📋 MAC & KIM — Évaluation des risques manutention</h2>
+  <p>MAC (Manual handling Assessment Charts — HSE) et KIM (Key Indicator Method — BAuA)</p>
+</div>
+<div class="g2">
+  <!-- MAC -->
+  <div class="card">
+    <div class="card-head"><span class="card-icon">🇬🇧</span><span class="card-title">Grille MAC — HSE</span></div>
+    <div class="card-body">
+      <div class="info-box">Coter chaque facteur de 0 (Vert) à 3 (Rouge). Score total ≥ 16 = risque élevé.</div>
+      <div class="mac-grid" id="macGrid"></div>
+      <div class="mac-total">
+        <div class="mac-total-val" id="macTotalVal" style="color:var(--green)">0</div>
+        <div class="mac-total-lbl">Score MAC total / 33</div>
+        <div id="macVerdict" style="font-size:.8rem;color:var(--dim);margin-top:5px">— En attente de cotation</div>
+      </div>
+    </div>
+  </div>
+  <!-- KIM -->
+  <div class="card">
+    <div class="card-head"><span class="card-icon">🇩🇪</span><span class="card-title">Méthode KIM — BAuA</span></div>
+    <div class="card-body">
+      <div class="info-box">Key Indicator Method — norme allemande DIN EN 1005-2. Évalue les risques de surcharge physique.</div>
+      <div class="kim-section">
+        <div class="kim-section-title">Conditions de levage</div>
+        <div class="kim-row"><label>Poids de la charge (kg)</label><input id="kPoids" type="number" value="15" min="1" step="0.5" oninput="calcKIM()"></div>
+        <div class="kim-row"><label>Fréquence (fois/min)</label><input id="kFreq" type="number" value="1" min="0.1" step="0.1" oninput="calcKIM()"></div>
+        <div class="kim-row"><label>Durée totale (h)</label><input id="kDuree" type="number" value="2" min="0.25" step="0.25" oninput="calcKIM()"></div>
+        <div class="kim-row"><label>Posture de travail</label>
+          <select id="kPosture" onchange="calcKIM()">
+            <option value="1">Debout sans contrainte</option>
+            <option value="1.2">Légèrement penché</option>
+            <option value="1.5">Fortement penché / torsion</option>
+            <option value="2">Position forcée</option>
+          </select></div>
+        <div class="kim-row"><label>Conditions de travail</label>
+          <select id="kCond" onchange="calcKIM()">
+            <option value="1">Bonnes conditions</option>
+            <option value="1.1">Conditions moyennes</option>
+            <option value="1.25">Conditions défavorables</option>
+          </select></div>
+      </div>
+      <div class="kim-result-box">
+        <div class="kim-score-val" id="kimScore">—</div>
+        <div class="kim-risk-label" id="kimRisk">Saisir les paramètres</div>
+        <div id="kimVerdict" style="font-size:.75rem;color:var(--dim);margin-top:6px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE 4 : REBA
+═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-reba">
+<div class="page-header">
+  <h2>🦴 Score REBA — Évaluation posturale globale</h2>
+  <p>Rapid Entire Body Assessment — membres supérieurs, tronc, cou, jambes</p>
+</div>
+<div class="g2">
+  <div class="card">
+    <div class="card-head"><span class="card-icon">🔼</span><span class="card-title">Groupe A — Tronc, Cou, Jambes</span></div>
+    <div class="card-body">
+      <div class="reba-section">
+        <div class="reba-title">Tronc</div>
+        <div class="reba-row"><label>Position tronc</label>
+          <select id="rTronc" onchange="calcReba()">
+            <option value="1">Droit (0°)</option>
+            <option value="2">Incliné 0–20°</option>
+            <option value="3">Incliné 20–60°</option>
+            <option value="4">Incliné > 60°</option>
+          </select></div>
+        <div class="reba-row"><label>Torsion / Inclinaison latérale</label>
+          <select id="rTroncTw" onchange="calcReba()">
+            <option value="0">Non</option><option value="1">Oui (+1)</option>
+          </select></div>
+      </div>
+      <div class="reba-section">
+        <div class="reba-title">Cou</div>
+        <div class="reba-row"><label>Position cou</label>
+          <select id="rCou" onchange="calcReba()">
+            <option value="1">0–20° flexion</option>
+            <option value="2">> 20° ou extension</option>
+          </select></div>
+        <div class="reba-row"><label>Torsion / Inclinaison</label>
+          <select id="rCouTw" onchange="calcReba()">
+            <option value="0">Non</option><option value="1">Oui (+1)</option>
+          </select></div>
+      </div>
+      <div class="reba-section">
+        <div class="reba-title">Jambes</div>
+        <div class="reba-row"><label>Support</label>
+          <select id="rJambes" onchange="calcReba()">
+            <option value="1">Debout — appui bilateral</option>
+            <option value="2">Appui unilateral / instable</option>
+          </select></div>
+        <div class="reba-row"><label>Flexion genoux</label>
+          <select id="rGenoux" onchange="calcReba()">
+            <option value="0">< 30° ou debout</option>
+            <option value="1">30–60° (+1)</option>
+            <option value="2">> 60° (+2)</option>
+          </select></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="card-icon">💪</span><span class="card-title">Groupe B — Bras, Avant-bras, Poignet</span></div>
+    <div class="card-body">
+      <div class="reba-section">
+        <div class="reba-title">Bras (épaule)</div>
+        <div class="reba-row"><label>Flexion / extension bras</label>
+          <select id="rBras" onchange="calcReba()">
+            <option value="1">< 20°</option>
+            <option value="2">20–45° ou extension 20°</option>
+            <option value="3">45–90°</option>
+            <option value="4">> 90°</option>
+          </select></div>
+        <div class="reba-row"><label>Épaule surélevée / abduction</label>
+          <select id="rBrasMod" onchange="calcReba()">
+            <option value="0">Non</option><option value="1">Oui (+1)</option>
+          </select></div>
+      </div>
+      <div class="reba-section">
+        <div class="reba-title">Avant-bras</div>
+        <div class="reba-row"><label>Flexion avant-bras</label>
+          <select id="rAvantBras" onchange="calcReba()">
+            <option value="1">60–100° (OK)</option>
+            <option value="2">< 60° ou > 100°</option>
+          </select></div>
+      </div>
+      <div class="reba-section">
+        <div class="reba-title">Poignet</div>
+        <div class="reba-row"><label>Flexion / extension</label>
+          <select id="rPoignet" onchange="calcReba()">
+            <option value="1">0–15°</option>
+            <option value="2">> 15°</option>
+          </select></div>
+        <div class="reba-row"><label>Torsion / déviation</label>
+          <select id="rPoignetTw" onchange="calcReba()">
+            <option value="0">Non</option><option value="1">Oui (+1)</option>
+          </select></div>
+      </div>
+      <div class="reba-section">
+        <div class="reba-title">Charge & Activité musculaire</div>
+        <div class="reba-row"><label>Charge / force</label>
+          <select id="rCharge" onchange="calcReba()">
+            <option value="0">< 5 kg</option>
+            <option value="1">5–10 kg (+1)</option>
+            <option value="2">> 10 kg (+2)</option>
+            <option value="3">Choc / brusque (+3)</option>
+          </select></div>
+        <div class="reba-row"><label>Activité (répétitif / statique)</label>
+          <select id="rActivite" onchange="calcReba()">
+            <option value="0">Occasionnel</option>
+            <option value="1">Répétitif > 4×/min (+1)</option>
+            <option value="1b">Statique > 1 min (+1)</option>
+          </select></div>
+      </div>
+      <div class="reba-score-box">
+        <div class="reba-score-val" id="rebaScore">—</div>
+        <div class="reba-action" id="rebaAction">Compléter la grille</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE 5 : PLAN D'ACTION
+═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-actions">
+<div class="page-header">
+  <h2>✅ Plan d'action SST — Manutention manuelle</h2>
+  <p>Suivi des mesures correctives issues des analyses terrain</p>
+</div>
+<div class="g2">
+  <div class="card">
+    <div class="card-head"><span class="card-icon">➕</span><span class="card-title">Ajouter une action corrective</span></div>
+    <div class="card-body">
+      <div class="field"><label class="lbl">Intitulé de l'action<span>*</span></label>
+        <input id="acTitle" placeholder="Ex : Installer une table élévatrice au poste de chargement"></div>
+      <div class="row3">
+        <div class="field"><label class="lbl">Priorité</label>
+          <select id="acPrio"><option value="1">🔴 P1 — Urgent</option><option value="2">🟠 P2 — Court terme</option><option value="3">🟢 P3 — Moyen terme</option></select></div>
+        <div class="field"><label class="lbl">Responsable</label><input id="acResp" placeholder="Nom / service"></div>
+        <div class="field"><label class="lbl">Échéance</label><input id="acDate" type="date"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label class="lbl">Poste concerné</label><input id="acPoste" placeholder="Lier à un poste observé"></div>
+        <div class="field"><label class="lbl">Catégorie ERIC-P</label>
+          <select id="acCat">
+            <option value="E">Éliminer</option>
+            <option value="R">Réduire</option>
+            <option value="I">Isoler</option>
+            <option value="C">Contrôler</option>
+            <option value="P">Protéger</option>
+          </select></div>
+      </div>
+      <div class="field"><label class="lbl">Description / Détail</label>
+        <textarea id="acDesc" placeholder="Description détaillée de la mesure à mettre en place…"></textarea></div>
+      <button class="btn btn-blue btn-full btn-lg" style="margin-top:8px" onclick="addAction()">➕ Ajouter au plan d'action</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="card-icon">📋</span><span class="card-title">Actions en cours</span><span class="card-badge" id="acCount">0</span></div>
+    <div class="card-body" style="padding:12px">
+      <div class="action-list" id="actionList">
+        <div class="action-empty">Aucune action pour le moment. Les recommandations de l'analyse seront ajoutées automatiquement.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE 6 : HISTORIQUE
+═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-historique">
+<div class="page-header">
+  <h2>🗂 Historique des analyses</h2>
+  <p>Toutes les analyses terminées depuis le lancement de la session</p>
+</div>
+<div class="g2">
+  <div class="card" style="grid-column:1/-1">
+    <div class="card-head"><span class="card-icon">📊</span><span class="card-title">Comparatif multi-postes</span></div>
+    <div class="card-body"><div class="chart-wrap"><canvas id="chartCompar"></canvas></div></div>
+  </div>
+</div>
+<div style="margin-top:16px">
+  <div class="card">
+    <div class="card-head"><span class="card-icon">🗂</span><span class="card-title">Sessions enregistrées</span><span class="card-badge" id="histCount">0</span></div>
+    <div class="card-body" style="padding:12px">
+      <div class="hist-list" id="histList"><div class="action-empty">Aucune analyse terminée.</div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL RAPPORT
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div><div class="modal-title">📋 Rapport d'Audit Ergonomique Complet</div>
+        <div class="modal-sub" id="modalSub">—</div></div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Fermer</button>
+      <button class="btn btn-blue" onclick="window.print()">🖨 Imprimer / PDF</button>
+      <button class="btn btn-green" onclick="exportCSV()">📥 Export CSV</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+const S = {
+  running:false, startTime:0, elapsed:0, interval:null,
+  levages:[], analyses:[], actions:[],
+  sessionId:'SGT-'+Date.now().toString(36).toUpperCase()
+};
+document.getElementById('sid').textContent = S.sessionId;
+
+// Seuils réglementaires par genre (FR)
+const SEUILS = { H:7500, F:4500 };
+
+// ═══════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════
+function goPage(id) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if(id==='niosh') calcNiosh();
+  if(id==='mac') initMAC();
+  if(id==='reba') calcReba();
+}
+
+// ═══════════════════════════════════════════════════════
+// TIMER
+// ═══════════════════════════════════════════════════════
+function toggleTimer() {
+  const p = parseFloat(document.getElementById('poids').value);
+  if(!p||p<=0){showToast('⚠ Saisissez le poids de la charge');return}
+  if(!S.running) {
+    S.running=true; S.startTime=Date.now()-S.elapsed;
+    S.interval=setInterval(tick,100);
+    document.getElementById('btnStart').textContent='⏸ Pause';
+    document.getElementById('btnStart').className='btn btn-orange btn-lg btn-full';
+    document.getElementById('btnStop').disabled=false;
+    document.getElementById('timerDig').className='timer-dig run';
+    document.getElementById('timerLbl').textContent='OBSERVATION EN COURS';
+    document.getElementById('btnLevage').disabled=false;
+    document.getElementById('poids').disabled=true;
+    setAlert('ok','🟢 Observation active — enregistrez chaque levage observé');
+  } else {
+    S.running=false; clearInterval(S.interval); S.elapsed=Date.now()-S.startTime;
+    document.getElementById('btnStart').textContent='▶ Reprendre';
+    document.getElementById('btnStart').className='btn btn-green btn-lg btn-full';
+    document.getElementById('timerDig').className='timer-dig pause';
+    document.getElementById('timerLbl').textContent='EN PAUSE';
+    document.getElementById('btnLevage').disabled=true;
+    setAlert('warn','⏸ Observation en pause');
+  }
+}
+function stopTimer() {
+  if(S.running){S.running=false;clearInterval(S.interval);S.elapsed=Date.now()-S.startTime}
+  document.getElementById('btnStart').textContent='▶ Reprendre';
+  document.getElementById('btnStart').className='btn btn-green btn-lg btn-full';
+  document.getElementById('timerDig').className='timer-dig done';
+  document.getElementById('timerLbl').textContent='TERMINÉ';
+  document.getElementById('btnLevage').disabled=true;
+}
+function tick() {
+  S.elapsed=Date.now()-S.startTime;
+  const t=Math.floor(S.elapsed/1000);
+  document.getElementById('timerDig').textContent=fmtTime(t);
+  updateGauge();
+}
+function fmtTime(s){
+  return pad(Math.floor(s/3600))+':'+pad(Math.floor((s%3600)/60))+':'+pad(s%60);
+}
+function pad(n){return n<10?'0'+n:n}
+
+// ═══════════════════════════════════════════════════════
+// SEUIL GENRE
+// ═══════════════════════════════════════════════════════
+function getSeuilBase(){
+  const g=document.getElementById('genre').value;
+  return SEUILS[g]||7500;
+}
+document.getElementById('genre').addEventListener('change',()=>{
+  const sb=getSeuilBase();
+  const g=document.getElementById('genre').value;
+  document.getElementById('seuilGenreLabel').textContent=sb.toLocaleString('fr')+' kg';
+  document.getElementById('genreInfo').innerHTML=
+    `ℹ️ Seuil journalier : <strong>${sb.toLocaleString('fr')} kg</strong> (${g==='F'?'Femme — seuil réduit':'Homme'}, décret ergonomique FR / EN 1005-2). Les postures cochées réduisent ce seuil par pénalité NIOSH.`;
+  document.getElementById('gSeuil').textContent=sb;
+  updateGauge();
+});
+
+// ═══════════════════════════════════════════════════════
+// POSTURES
+// ═══════════════════════════════════════════════════════
+const POSPEN=[.25,.25,.20,.15,.10];
+function onPosture(i){
+  const cb=document.getElementById('chk'+i);
+  const item=document.getElementById('pi'+i);
+  cb.checked?item.classList.add('sel'):item.classList.remove('sel');
+  updatePenBar(); updateGauge();
+}
+function getPenCoeff(){
+  let p=1;
+  POSPEN.forEach((pen,i)=>{if(document.getElementById('chk'+i).checked)p-=pen});
+  return Math.max(p,0.1);
+}
+function getPenPct(){return Math.round((1-getPenCoeff())*100)}
+function updatePenBar(){
+  const pct=getPenPct();
+  document.getElementById('penPct').textContent=pct+'%';
+  const bar=document.getElementById('penBar');
+  bar.style.width=Math.min(pct,100)+'%';
+  bar.style.background=pct>=50?'var(--red)':pct>=25?'var(--orange)':'var(--green)';
+}
+
+// ═══════════════════════════════════════════════════════
+// LEVAGE
+// ═══════════════════════════════════════════════════════
+function enrLevage(){
+  const poids=parseFloat(document.getElementById('poids').value);
+  const dist=parseFloat(document.getElementById('distTransport').value)||0;
+  const now=Date.now();
+  const tSec=Math.floor(S.elapsed/1000);
+  const prev=S.levages.length>0?S.levages[S.levages.length-1]:null;
+  const interval=prev?(now-prev.ts)/1000:null;
+  const rythme=interval?(60/interval).toFixed(1):null;
+  S.levages.push({ts:now,tSec,poids,dist,rythme});
+  updateKPIs(); addLogRow(S.levages.length,tSec,poids,getTotalMasse(),rythme);
+  updateGauge(); updateChart();
+  const btn=document.getElementById('btnLevage');
+  btn.style.transform='scale(.95)'; setTimeout(()=>btn.style.transform='',120);
+  showToast('+'+poids+' kg enregistré');
+}
+function getTotalMasse(){return S.levages.reduce((a,l)=>a+l.poids,0)}
+function getTotalDist(){return S.levages.reduce((a,l)=>a+(l.dist||0),0)}
+function updateKPIs(){
+  const n=S.levages.length, masse=getTotalMasse();
+  const tMin=S.elapsed/60000;
+  const rythme=tMin>0?(n/tMin).toFixed(1):'—';
+  document.getElementById('kLevages').textContent=n;
+  document.getElementById('kMasse').textContent=masse.toFixed(1);
+  document.getElementById('kRythme').textContent=rythme;
+  document.getElementById('kDist').textContent=(getTotalDist()).toFixed(0);
+}
+function addLogRow(num,tSec,poids,cumul,rythme){
+  const empty=document.getElementById('logEmpty');
+  if(empty)empty.remove();
+  const rClass=rythme&&parseFloat(rythme)>6?'warn':'ok';
+  const rText=rythme?rythme+'/min':'—';
+  const row=document.createElement('div');
+  row.className='log-row';
+  row.innerHTML=`<span class="lc-n">${num}</span><span class="lc-t">${fmtTime(tSec)}</span><span class="lc-p">${poids}kg</span><span class="lc-c">${cumul.toFixed(1)}kg</span><span class="lc-r ${rClass}">${rText}</span><span class="lc-n2">—</span>`;
+  const body=document.getElementById('logBody');
+  body.appendChild(row); body.scrollTop=body.scrollHeight;
+  document.getElementById('logBadge').textContent=num+' entrées';
+}
+
+// ═══════════════════════════════════════════════════════
+// GAUGE
+// ═══════════════════════════════════════════════════════
+function updateGauge(){
+  const sb=getSeuilBase();
+  const sa=sb*getPenCoeff();
+  const masse=getTotalMasse();
+  const pct=sa>0?Math.min((masse/sa)*100,999):0;
+  const restant=Math.max(sa-masse,0);
+  const arcLen=251;
+  const fill=Math.min(pct/100,1)*arcLen;
+  let color=pct>100?'var(--red)':pct>70?'var(--orange)':'var(--green)';
+  document.getElementById('gFill').setAttribute('stroke-dasharray',fill+' '+(arcLen-fill));
+  document.getElementById('gFill').style.stroke=color;
+  document.getElementById('gVal').textContent=Math.round(pct)+'%';
+  document.getElementById('gVal').setAttribute('fill',color.replace('var(','').replace(')',''));
+  document.getElementById('gSeuil').textContent=sb.toLocaleString('fr');
+  document.getElementById('gSeuilAdj').textContent=sa.toFixed(0);
+  document.getElementById('gRestant').textContent=restant.toFixed(0);
+  // progress bar
+  document.getElementById('pbBar').style.width=Math.min(pct,100)+'%';
+  document.getElementById('pbBar').style.background=color;
+  document.getElementById('pbPct').textContent=Math.round(pct)+'%';
+  // alert
+  if(S.running||S.elapsed>0){
+    if(pct<=70) setAlert('ok','🟢 Conforme — tonnage dans les limites acceptables');
+    else if(pct<=100) setAlert('warn','🟡 Seuil d\'alerte — surveiller l\'évolution du tonnage');
+    else setAlert('danger','🔴 DÉPASSEMENT — seuil réglementaire franchi');
+  }
+}
+function setAlert(cls,txt){
+  const el=document.getElementById('alertLive');
+  el.className='alert '+cls; el.textContent=txt;
+}
+
+// ═══════════════════════════════════════════════════════
+// CHART CADENCE
+// ═══════════════════════════════════════════════════════
+let chartCad=null;
+function updateChart(){
+  const labels=S.levages.map((_,i)=>i+1);
+  const data=S.levages.map(l=>parseFloat(l.rythme)||0);
+  const ctx=document.getElementById('chartCadence').getContext('2d');
+  if(!chartCad){
+    chartCad=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Cadence (lev/min)',data,borderColor:'#1a7aff',backgroundColor:'rgba(26,122,255,.1)',tension:.4,fill:true,pointRadius:3,pointBackgroundColor:'#1a7aff'}]},options:{responsive:true,plugins:{legend:{labels:{color:'#6a90b8',font:{size:10}}}},scales:{x:{ticks:{color:'#2d5070'},grid:{color:'rgba(30,61,99,.4)'}},y:{ticks:{color:'#2d5070'},grid:{color:'rgba(30,61,99,.4)'},beginAtZero:true}}}});
+  } else {
+    chartCad.data.labels=labels;
+    chartCad.data.datasets[0].data=data;
+    chartCad.update();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// NIOSH
+// ═══════════════════════════════════════════════════════
+function calcNiosh(){
+  const H=parseFloat(document.getElementById('nH').value)||35;
+  const V=parseFloat(document.getElementById('nV').value)||75;
+  const D=parseFloat(document.getElementById('nD').value)||25;
+  const A=parseFloat(document.getElementById('nA').value)||0;
+  const F=parseFloat(document.getElementById('nF').value)||1;
+  const dur=document.getElementById('nDur').value;
+  const CM=parseFloat(document.getElementById('nCM').value)||0.95;
+  const poids=parseFloat(document.getElementById('nPoids').value)||23;
+  // FM table simplifiée
+  const fmTable={short:{0.2:1,0.5:0.97,1:0.94,2:0.91,3:0.88,4:0.84,5:0.8,6:0.75,7:0.7,8:0.6,9:0.52,10:0.45,11:0.41,12:0.37,13:0.34,14:0.31,15:0.28},mod:{0.2:0.95,0.5:0.92,1:0.88,2:0.84,3:0.79,4:0.72,5:0.6,6:0.5,7:0.42,8:0.35,9:0.3,10:0.26,11:0.23,12:0.21},long:{0.2:0.85,0.5:0.81,1:0.75,2:0.65,3:0.55,4:0.45,5:0.35,6:0.27,7:0.22,8:0.18,9:0.15,10:0.13,11:0.12,12:0.11}};
+  const fmKeys=Object.keys(fmTable[dur]).map(Number).sort((a,b)=>a-b);
+  let fm=0.85; let bestKey=fmKeys[0];
+  for(const k of fmKeys){if(F>=k)bestKey=k} fm=fmTable[dur][bestKey]||0.85;
+  const HM=Math.min(25/Math.max(H,25),1);
+  const VM=1-0.003*Math.abs(V-75);
+  const DM=0.82+4.5/Math.max(D,25);
+  const AM=1-0.0032*Math.min(A,135);
+  const RWL=23*HM*VM*Math.min(DM,1)*AM*fm*CM;
+  const IL=poids/RWL;
+  const coeffs=[{n:'HM (Distance H)',v:HM},{n:'VM (Hauteur V)',v:VM},{n:'DM (Dépl. vertical)',v:Math.min(DM,1)},{n:'AM (Asymétrie)',v:AM},{n:'FM (Fréquence)',v:fm},{n:'CM (Qualité prise)',v:CM}];
+  document.getElementById('nRWL').textContent=RWL.toFixed(2)+' kg';
+  document.getElementById('nPoidsAff').textContent=poids+' kg';
+  const ilBadge=document.getElementById('nIL_badge');
+  ilBadge.textContent='IL = '+IL.toFixed(2);
+  if(IL<=1){ilBadge.className='li-badge li-ok'}
+  else if(IL<=3){ilBadge.className='li-badge li-warn'}
+  else{ilBadge.className='li-badge li-danger'}
+  document.getElementById('nioshCoeffs').innerHTML=coeffs.map(c=>`<div class="coeff-item"><span>${c.n}</span><strong>${c.v.toFixed(3)}</strong></div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// MAC
+// ═══════════════════════════════════════════════════════
+const MAC_ITEMS=[
+  'Poids de la charge','Distance horizontale','Fréquence de levage',
+  'Distance verticale','Torsion tronc','Distance de transport',
+  'Conditions environnementales','Caractéristiques de la charge',
+  'Prise / couplage charge','Contraintes de l\'espace','Sol / surface de travail'
+];
+const macScores=new Array(MAC_ITEMS.length).fill(0);
+function initMAC(){
+  if(document.getElementById('macGrid').children.length>0)return;
+  const grid=document.getElementById('macGrid');
+  MAC_ITEMS.forEach((item,i)=>{
+    const div=document.createElement('div');
+    div.className='mac-item';
+    div.innerHTML=`<div class="mac-lbl">${item}</div><div class="mac-score-row">${[0,1,2,3].map(s=>`<button class="mac-btn${s===0?' sel-0':''}" onclick="setMAC(${i},${s},this)">${['0','1','2','3'][s]}</button>`).join('')}</div>`;
+    grid.appendChild(div);
+  });
+  calcMAC();
+}
+function setMAC(i,score,btn){
+  macScores[i]=score;
+  const row=btn.parentElement;
+  row.querySelectorAll('.mac-btn').forEach((b,j)=>{
+    b.className='mac-btn'+(j===score?' sel-'+score:'');
+  });
+  calcMAC();
+}
+function calcMAC(){
+  const total=macScores.reduce((a,b)=>a+b,0);
+  const max=MAC_ITEMS.length*3;
+  document.getElementById('macTotalVal').textContent=total;
+  let color='var(--green)', verdict='Risque faible — poursuivre la surveillance';
+  if(total>=16){color='var(--red)';verdict='Risque élevé — intervention prioritaire requise'}
+  else if(total>=10){color='var(--orange)';verdict='Risque modéré — amélioration recommandée'}
+  document.getElementById('macTotalVal').style.color=color;
+  document.getElementById('macVerdict').textContent=verdict;
+}
+
+// ═══════════════════════════════════════════════════════
+// KIM
+// ═══════════════════════════════════════════════════════
+function calcKIM(){
+  const poids=parseFloat(document.getElementById('kPoids').value)||15;
+  const freq=parseFloat(document.getElementById('kFreq').value)||1;
+  const duree=parseFloat(document.getElementById('kDuree').value)||2;
+  const posture=parseFloat(document.getElementById('kPosture').value)||1;
+  const cond=parseFloat(document.getElementById('kCond').value)||1;
+  // Indice de charge par poids (simplifié KIM)
+  let ip=1;
+  if(poids<=5)ip=1; else if(poids<=10)ip=2; else if(poids<=15)ip=3;
+  else if(poids<=20)ip=4; else if(poids<=25)ip=6; else if(poids<=35)ip=8; else ip=10;
+  // Fréquence score
+  let sf=1;
+  if(freq<=0.2)sf=0.5; else if(freq<=0.5)sf=0.75; else if(freq<=1)sf=1;
+  else if(freq<=2)sf=1.5; else if(freq<=4)sf=2; else if(freq<=8)sf=3; else sf=4;
+  const score=ip*sf*duree*posture*cond;
+  document.getElementById('kimScore').textContent=score.toFixed(0);
+  let risk,color;
+  if(score<10){risk='Risque faible';color='var(--green)'}
+  else if(score<25){risk='Risque modéré';color='var(--cyan)'}
+  else if(score<50){risk='Risque élevé';color='var(--orange)'}
+  else{risk='Risque très élevé — intervention immédiate';color='var(--red)'}
+  document.getElementById('kimScore').style.color=color;
+  document.getElementById('kimRisk').textContent=risk;
+  document.getElementById('kimVerdict').textContent=score<10?'Aucune mesure corrective immédiate.':score<25?'Réexaminer le poste et envisager des améliorations.':'Mesures correctives nécessaires. Consulter un ergonome.';
+}
+
+// ═══════════════════════════════════════════════════════
+// REBA
+// ═══════════════════════════════════════════════════════
+// Table A REBA simplifiée [cou][jambe][tronc] → score partiel
+const REBA_A=[[1,2,3,4],[1,2,3,4],[3,3,5,6],[4,5,6,7],[2,3,4,5],[2,3,4,5],[4,4,5,6],[5,5,6,8]];
+const REBA_B=[[1,2,2,3],[2,3,3,4],[2,3,3,4],[3,4,4,5],[3,4,4,5],[4,5,5,6],[5,6,6,7],[5,6,6,7]];
+const REBA_C=[[1,1,1,2,3,3,4,5,6,7,7,7],[1,2,2,3,4,4,5,6,6,7,7,8],[2,3,3,3,4,5,6,7,7,8,8,8],[3,4,4,4,5,6,7,8,8,9,9,9],[4,4,4,5,6,7,8,8,9,9,9,9],[6,6,6,7,8,8,9,9,10,10,10,10],[7,7,7,8,9,9,9,10,10,11,11,11],[8,8,8,9,10,10,10,10,11,11,11,11],[9,9,9,10,10,10,11,11,12,12,12,12]];
+function calcReba(){
+  const tronc=parseInt(document.getElementById('rTronc').value)||1;
+  const troncTw=parseInt(document.getElementById('rTroncTw').value)||0;
+  const cou=parseInt(document.getElementById('rCou').value)||1;
+  const couTw=parseInt(document.getElementById('rCouTw').value)||0;
+  const jambes=parseInt(document.getElementById('rJambes').value)||1;
+  const genoux=parseInt(document.getElementById('rGenoux').value)||0;
+  const bras=parseInt(document.getElementById('rBras').value)||1;
+  const brasMod=parseInt(document.getElementById('rBrasMod').value)||0;
+  const avantBras=parseInt(document.getElementById('rAvantBras').value)||1;
+  const poignet=parseInt(document.getElementById('rPoignet').value)||1;
+  const poignetTw=parseInt(document.getElementById('rPoignetTw').value)||0;
+  const charge=parseInt(document.getElementById('rCharge').value)||0;
+  const actVal=document.getElementById('rActivite').value;
+  const activite=(actVal==='0')?0:1;
+  const scoreA=tronc+troncTw+cou+couTw+jambes+genoux;
+  const scoreB=bras+brasMod+avantBras+poignet+poignetTw;
+  const scoreC=Math.min(scoreA+charge,12);
+  const scoreD=Math.min(scoreB+charge,12);
+  const rebaRaw=Math.min(scoreC+scoreD+activite,15);
+  document.getElementById('rebaScore').textContent=rebaRaw;
+  let action,color;
+  if(rebaRaw<=1){action='Risque négligeable — aucune action requise';color='var(--green)'}
+  else if(rebaRaw<=3){action='Risque faible — action peut être nécessaire';color='var(--green)'}
+  else if(rebaRaw<=7){action='Risque moyen — investigation et modification requises';color='var(--orange)'}
+  else if(rebaRaw<=10){action='Risque élevé — modification rapide nécessaire';color='var(--red)'}
+  else{action='Risque très élevé — modification immédiate';color='var(--red)'}
+  document.getElementById('rebaScore').style.color=color;
+  document.getElementById('rebaAction').textContent=action;
+  document.getElementById('rebaAction').style.color=color;
+}
+
+// ═══════════════════════════════════════════════════════
+// PLAN D'ACTION
+// ═══════════════════════════════════════════════════════
+function addAction(auto){
+  const title=auto?auto.title:document.getElementById('acTitle').value.trim();
+  if(!title){showToast('⚠ Saisissez un intitulé');return}
+  const prio=auto?auto.prio:parseInt(document.getElementById('acPrio').value);
+  const resp=auto?'SST':document.getElementById('acResp').value;
+  const date=auto?'':document.getElementById('acDate').value;
+  const poste=auto?auto.poste:document.getElementById('acPoste').value;
+  const cat=auto?auto.cat:'C';
+  const desc=auto?auto.desc:document.getElementById('acDesc').value;
+  const action={id:Date.now(),title,prio,resp,date,poste,cat,desc,done:false};
+  S.actions.push(action);
+  renderActions();
+  if(!auto){
+    ['acTitle','acResp','acDate','acPoste','acDesc'].forEach(id=>document.getElementById(id).value='');
+    showToast('✅ Action ajoutée');
+  }
+}
+function renderActions(){
+  const list=document.getElementById('actionList');
+  document.getElementById('acCount').textContent=S.actions.length;
+  if(S.actions.length===0){list.innerHTML='<div class="action-empty">Aucune action pour le moment.</div>';return}
+  list.innerHTML=S.actions.map(a=>`
+    <div class="action-item ${a.done?'done':''}">
+      <div class="action-prio prio-${a.prio}">${a.prio}</div>
+      <div class="action-content">
+        <div class="action-title">${a.title}</div>
+        <div class="action-meta">
+          ${a.poste?'📍 '+a.poste+' · ':''}
+          ${a.resp?'👤 '+a.resp+' · ':''}
+          ${a.date?'📅 '+a.date+' · ':''}
+          <span style="color:var(--blue)">ERIC-P: ${a.cat}</span>
+        </div>
+        ${a.desc?`<div style="font-size:.75rem;color:var(--dim);margin-top:4px">${a.desc}</div>`:''}
+      </div>
+      <button class="action-status" onclick="toggleAction(${a.id})">${a.done?'✅ Fait':'⏳ En cours'}</button>
+    </div>`).join('');
+}
+function toggleAction(id){
+  const a=S.actions.find(x=>x.id===id);
+  if(a){a.done=!a.done;renderActions()}
+}
+
+// ═══════════════════════════════════════════════════════
+// ANALYSE FINALE
+// ═══════════════════════════════════════════════════════
+function lancerAnalyse(){
+  const secsTotal=Math.floor(S.elapsed/1000);
+  if(secsTotal<5){showToast('⚠ Temps d\'observation trop court');return}
+  if(S.running)stopTimer();
+  const poste=document.getElementById('poste').value||'Non spécifié';
+  const operateur=document.getElementById('operateur').value||'Anonyme';
+  const entite=document.getElementById('entite').value||'—';
+  const poids=parseFloat(document.getElementById('poids').value)||0;
+  const genre=document.getElementById('genre').value;
+  const age=document.getElementById('age').value||'—';
+  const dist=parseFloat(document.getElementById('distTransport').value)||0;
+  const dureeH=parseFloat(document.getElementById('dureePoste').value)||7;
+  const notes=document.getElementById('notes').value;
+  const masse=getTotalMasse();
+  const n=S.levages.length;
+  const coeff=getPenCoeff();
+  const sb=getSeuilBase();
+  const sa=sb*coeff;
+  const pct=sa>0?(masse/sa)*100:0;
+  const penPct=getPenPct();
+  const mins=Math.floor(secsTotal/60), secs=secsTotal%60;
+  const tMin=secsTotal/60;
+  const rythme=tMin>0?(n/tMin).toFixed(1):'—';
+  const now=new Date();
+  const dateStr=now.toLocaleDateString('fr-FR')+' à '+now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  let verdict;
+  if(masse<=sa) verdict={icon:'✅',label:'CONFORME',desc:`Le tonnage de ${masse.toFixed(1)} kg respecte le seuil réglementaire ajusté de ${sa.toFixed(0)} kg.`,cls:'ok'};
+  else if(masse<=sb) verdict={icon:'⚠️',label:'ALERTE ERGONOMIQUE',desc:`Le tonnage brut passe, mais les postures défavorables (−${penPct}%) font passer le poste en zone de risque TMS.`,cls:'warn'};
+  else verdict={icon:'🚨',label:'SURCHARGE — DANGER',desc:`Le tonnage de ${masse.toFixed(1)} kg dépasse le seuil de ${sa.toFixed(0)} kg. Risque de lésion si ce rythme est maintenu.`,cls:'danger'};
+  // Pénalités html
+  const PNAMES=['Dos fléchi','Torsion tronc','Hauteur critique','Charge à distance','Posture statique'];
+  let penHtml='';
+  POSPEN.forEach((pen,i)=>{if(document.getElementById('chk'+i).checked)penHtml+=`<div class="rrow"><span>⚠ ${PNAMES[i]}</span><strong style="color:var(--orange)">−${Math.round(pen*100)}%</strong></div>`});
+  if(!penHtml)penHtml=`<div class="rrow"><span>Aucun facteur aggravant</span><strong style="color:var(--green)">0%</strong></div>`;
+  // Recos auto
+  const recos=genRecos(poids,masse,sa,penPct,parseFloat(rythme),dist,genre);
+  // Ajouter recos au plan d'action auto
+  recos.forEach(r=>addAction({title:r.title,prio:r.prio,poste,cat:r.cat,desc:r.desc}));
+  const ana={id:Date.now(),poste,operateur,masse,sa,pct,verdict:verdict.cls,date:dateStr,n,rythme};
+  S.analyses.push(ana);
+  renderHistorique();
+  document.getElementById('modalSub').textContent=poste+' — '+dateStr;
+  document.getElementById('modalBody').innerHTML=`
+    <div class="msec"><div class="msec-title">📌 Identification</div>
+      <div class="rrow"><span>Poste</span><strong>${poste}</strong></div>
+      <div class="rrow"><span>Opérateur</span><strong>${operateur}</strong></div>
+      <div class="rrow"><span>Entité / Site</span><strong>${entite}</strong></div>
+      <div class="rrow"><span>Genre / Âge</span><strong>${genre==='F'?'Femme':'Homme'} — ${age} ans</strong></div>
+      <div class="rrow"><span>Session</span><strong style="font-size:.75rem">${S.sessionId}</strong></div>
+      <div class="rrow"><span>Date d'observation</span><strong>${dateStr}</strong></div>
+    </div>
+    <div class="msec"><div class="msec-title">📊 Métriques d'observation</div>
+      <div class="rrow"><span>Durée du poste saisi</span><strong>${dureeH} h</strong></div>
+      <div class="rrow"><span>Durée observée</span><strong>${mins} min ${secs} sec</strong></div>
+      <div class="rrow"><span>Poids unitaire de la charge</span><strong>${poids} kg</strong></div>
+      <div class="rrow"><span>Nombre de levages</span><strong>${n}</strong></div>
+      <div class="rrow"><span>Cadence mesurée</span><strong>${rythme} lev/min</strong></div>
+      <div class="rrow"><span>Distance de transport</span><strong>${dist} m / levage</strong></div>
+      <div class="rrow"><span>Tonnage total déplacé</span><strong style="font-size:1.05rem;color:#fff">${masse.toFixed(1)} kg</strong></div>
+    </div>
+    <div class="msec"><div class="msec-title">🦴 Pénalités posturales</div>
+      ${penHtml}
+      <div class="rrow" style="border-top:1px solid var(--border);margin-top:5px;padding-top:5px"><span>Coefficient résultant</span><strong>${(coeff*100).toFixed(0)}%</strong></div>
+    </div>
+    <div class="msec"><div class="msec-title">⚖️ Calcul réglementaire</div>
+      <div class="rrow"><span>Seuil journalier réglementaire (${genre==='F'?'Femme':'Homme'})</span><strong>${sb.toLocaleString('fr')} kg</strong></div>
+      <div class="rrow"><span>Seuil ajusté (postures −${penPct}%)</span><strong>${sa.toFixed(0)} kg</strong></div>
+      <div class="rrow"><span>Tonnage enregistré</span><strong>${masse.toFixed(1)} kg</strong></div>
+      <div class="rrow"><span>Charge relative</span><strong style="color:${pct>100?'var(--red)':pct>70?'var(--orange)':'var(--green)'}">${Math.round(pct)}%</strong></div>
+    </div>
+    ${notes?`<div class="msec"><div class="msec-title">📝 Notes terrain</div><div style="font-size:.82rem;color:var(--dim);line-height:1.5">${notes}</div></div>`:''}
+    <div class="verdict-box ${verdict.cls}">
+      <div class="verdict-icon">${verdict.icon}</div>
+      <div class="verdict-title ${verdict.cls}">${verdict.label}</div>
+      <div class="verdict-desc">${verdict.desc}</div>
+    </div>
+    <div class="msec"><div class="msec-title">💡 Recommandations SST — ajoutées au plan d'action</div>
+      <div class="reco-list">${recos.map(r=>`<div class="reco-item"><strong>${r.title}</strong>${r.desc}</div>`).join('')}</div>
+    </div>
+  `;
+  document.getElementById('modalOverlay').classList.add('open');
+  showToast('✅ Analyse générée — actions ajoutées au plan');
+}
+function genRecos(poids,masse,sa,penPct,rythme,dist,genre){
+  const recos=[];
+  const limiteSexe=genre==='F'?15:25;
+  if(poids>limiteSexe) recos.push({title:`Réduire le poids unitaire (> ${limiteSexe} kg)`,prio:1,cat:'R',desc:`Poids de ${poids} kg dépasse le seuil recommandé pour un ${genre==='F'?'opérateur féminin':'opérateur masculin'}. Fractionner les charges ou utiliser un équipement de manutention mécanique.`});
+  if(document.getElementById('chk0').checked) recos.push({title:'Corriger la posture lombaire — formation gestes et postures',prio:2,cat:'C',desc:'Former aux techniques de levage en fente, maintenir le dos droit, utiliser la force des jambes. Revoir la hauteur de prise.'});
+  if(document.getElementById('chk1').checked) recos.push({title:'Supprimer les rotations axiales en charge',prio:2,cat:'E',desc:'Réorganiser le poste pour que le pivot se fasse par déplacement des pieds, non par torsion vertébrale. Repositionner les zones de dépôt.'});
+  if(document.getElementById('chk2').checked) recos.push({title:'Ajuster les hauteurs de prise (60–120 cm)',prio:1,cat:'R',desc:'Prévoir une table élévatrice ou un quai ajustable. Zone de prise optimale entre 60 et 120 cm du sol.'});
+  if(document.getElementById('chk3').checked) recos.push({title:'Rapprocher la charge du corps — réimplantation du poste',prio:2,cat:'E',desc:'Zone de travail optimale < 30 cm du corps. Revoir l\'implantation du poste et la position des contenants.'});
+  if(dist>5) recos.push({title:`Réduire la distance de transport (${dist} m)`,prio:2,cat:'R',desc:`Distance de ${dist} m amplifie la charge physique cumulée. Rapprocher les zones de départ et d\'arrivée ou utiliser des équipements de déplacement.`});
+  if(!isNaN(rythme)&&rythme>5) recos.push({title:`Réduire la cadence (mesurée : ${rythme} lev/min)`,prio:2,cat:'C',desc:'Cadence élevée majore la contrainte biomécanique. Prévoir des micro-pauses toutes les 45 min et alterner les tâches.'});
+  if(masse>sa*0.8) recos.push({title:'Mettre en place une rotation des opérateurs',prio:3,cat:'C',desc:'Dépassement ou approche du seuil détecté. Alterner les tâches de manutention avec des activités légères pour répartir la charge physique.'});
+  if(recos.length===0) recos.push({title:'Maintenir les bonnes pratiques',prio:3,cat:'C',desc:'Aucun facteur critique détecté sur cette observation. Maintenir la sensibilisation périodique et la surveillance.'});
+  return recos;
+}
+
+// ═══════════════════════════════════════════════════════
+// HISTORIQUE + GRAPHE COMPARATIF
+// ═══════════════════════════════════════════════════════
+let chartCompar=null;
+function renderHistorique(){
+  document.getElementById('histCount').textContent=S.analyses.length;
+  const list=document.getElementById('histList');
+  if(S.analyses.length===0){list.innerHTML='<div class="action-empty">Aucune analyse terminée.</div>';return}
+  list.innerHTML=[...S.analyses].reverse().map(a=>`
+    <div class="hist-item">
+      <div><div class="hist-name">${a.poste}</div>
+        <div class="hist-meta">${a.date} — ${a.n} levages — ${a.masse.toFixed(1)} kg / ${a.sa.toFixed(0)} kg max</div></div>
+      <span class="hist-badge hb-${a.verdict}">${Math.round(a.pct)}%</span>
+    </div>`).join('');
+  // Chart comparatif
+  const ctx=document.getElementById('chartCompar').getContext('2d');
+  const labels=S.analyses.map(a=>a.poste.substring(0,20));
+  const dataM=S.analyses.map(a=>a.masse.toFixed(1));
+  const dataS=S.analyses.map(a=>a.sa.toFixed(0));
+  const colors=S.analyses.map(a=>a.verdict==='ok'?'rgba(0,224,150,.7)':a.verdict==='warn'?'rgba(255,149,0,.7)':'rgba(255,59,92,.7)');
+  if(!chartCompar){
+    chartCompar=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Tonnage réalisé (kg)',data:dataM,backgroundColor:colors,borderRadius:5},{label:'Seuil ajusté (kg)',data:dataS,backgroundColor:'rgba(26,122,255,.3)',borderColor:'var(--blue)',borderWidth:1,borderRadius:5,type:'bar'}]},options:{responsive:true,plugins:{legend:{labels:{color:'#6a90b8',font:{size:10}}}},scales:{x:{ticks:{color:'#2d5070'},grid:{color:'rgba(30,61,99,.3)'}},y:{ticks:{color:'#2d5070'},grid:{color:'rgba(30,61,99,.3)'},beginAtZero:true}}}});
+  } else {
+    chartCompar.data.labels=labels;
+    chartCompar.data.datasets[0].data=dataM;
+    chartCompar.data.datasets[0].backgroundColor=colors;
+    chartCompar.data.datasets[1].data=dataS;
+    chartCompar.update();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════
+function closeModal(){document.getElementById('modalOverlay').classList.remove('open')}
+document.getElementById('modalOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal()});
+function showToast(msg,dur=2200){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
+function exportCSV(){
+  if(S.levages.length===0){showToast('⚠ Aucune donnée');return}
+  const poste=document.getElementById('poste').value||'inconnu';
+  const rows=[['#','Temps(s)','Poids(kg)','Cumul(kg)','Rythme(/min)','Distance(m)']];
+  let cumul=0;
+  S.levages.forEach((l,i)=>{
+    cumul+=l.poids;
+    rows.push([i+1,l.tSec,l.poids,cumul.toFixed(1),l.rythme||'—',l.dist||0]);
+  });
+  const csv=rows.map(r=>r.join(';')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='ErgoTrackPRO_'+S.sessionId+'_'+poste.replace(/\s/g,'_')+'.csv';
+  a.click(); showToast('📥 Export CSV téléchargé');
+}
+
+// Init
+calcNiosh();
+calcKIM();
+calcReba();
+</script>
+</body>
+</html>
+
+
+<!-- MODULE PHOTO — Évaluation posturale guidée sans IA -->
+<script>
+(function patchNav(){
+  const tabs = document.querySelector('.nav-tabs');
+  const btn = document.createElement('button');
+  btn.className = 'nav-tab';
+  btn.innerHTML = '📸 Éval. Photo';
+  btn.onclick = function(){ goPage('photo'); };
+  tabs.appendChild(btn);
+  const page = document.createElement('div');
+  page.className = 'page';
+  page.id = 'page-photo';
+  page.innerHTML = buildPhotoPage();
+  document.body.insertBefore(page, document.getElementById('modalOverlay'));
+})();
+
+// ═══════════════════════════════════════════
+// DONNÉES : questions cotation visuelle
+// ═══════════════════════════════════════════
+const QUESTIONS = [
+  {
+    id:'tronc', zone:'Tronc', icon:'🔺',
+    label:'Quelle est l\'inclinaison du tronc ?',
+    options:[
+      { val:1, label:'Droit', desc:'0°, vertical', color:'green',
+        svg:`<line x1="50" y1="20" x2="50" y2="80" stroke="#00e096" stroke-width="4" stroke-linecap="round"/>
+             <circle cx="50" cy="15" r="8" fill="#00e096"/>`
+      },
+      { val:2, label:'Légèrement penché', desc:'0–20°', color:'cyan',
+        svg:`<line x1="50" y1="20" x2="42" y2="78" stroke="#00d4ff" stroke-width="4" stroke-linecap="round"/>
+             <circle cx="50" cy="15" r="8" fill="#00d4ff"/>
+             <text x="62" y="55" fill="#00d4ff" font-size="9">≤20°</text>`
+      },
+      { val:3, label:'Très penché', desc:'20–60°', color:'orange',
+        svg:`<line x1="50" y1="20" x2="30" y2="75" stroke="#ff9500" stroke-width="4" stroke-linecap="round"/>
+             <circle cx="50" cy="15" r="8" fill="#ff9500"/>
+             <text x="58" y="55" fill="#ff9500" font-size="9">≈45°</text>`
+      },
+      { val:4, label:'Incliné > 60°', desc:'ou extension', color:'red',
+        svg:`<line x1="50" y1="20" x2="18" y2="65" stroke="#ff3b5c" stroke-width="4" stroke-linecap="round"/>
+             <circle cx="50" cy="15" r="8" fill="#ff3b5c"/>
+             <text x="55" y="45" fill="#ff3b5c" font-size="9">>60°</text>`
+      }
+    ]
+  },
+  {
+    id:'tronc_tw', zone:'Tronc', icon:'🔄',
+    label:'Y a-t-il une torsion ou inclinaison latérale du tronc ?',
+    modifier:true,
+    options:[
+      { val:0, label:'Non', desc:'Pas de torsion', color:'green',
+        svg:`<line x1="50" y1="20" x2="50" y2="78" stroke="#00e096" stroke-width="4" stroke-linecap="round"/>
+             <circle cx="50" cy="15" r="8" fill="#00e096"/>
+             <text x="36" y="95" fill="#00e096" font-size="9">✓ OK</text>`
+      },
+      { val:1, label:'Oui (+1)', desc:'Rotation ou inclinaison', color:'orange',
+        svg:`<path d="M50,20 Q35,50 50,78" stroke="#ff9500" stroke-width="4" fill="none" stroke-linecap="round"/>
+             <circle cx="50" cy="15" r="8" fill="#ff9500"/>
+             <text x="30" y="95" fill="#ff9500" font-size="9">⚠ +1 pt</text>`
+      }
+    ]
+  },
+  {
+    id:'cou', zone:'Cou', icon:'↕',
+    label:'Position du cou / de la tête ?',
+    options:[
+      { val:1, label:'Normal', desc:'0–20° flexion', color:'green',
+        svg:`<line x1="50" y1="30" x2="50" y2="70" stroke="#00e096" stroke-width="4" stroke-linecap="round"/>
+             <ellipse cx="50" cy="22" rx="12" ry="10" fill="#00e096" opacity=".7"/>
+             <line x1="50" y1="32" x2="46" y2="50" stroke="#00e096" stroke-width="3"/>`
+      },
+      { val:2, label:'Fléchi > 20°', desc:'ou en extension', color:'red',
+        svg:`<line x1="50" y1="30" x2="50" y2="70" stroke="#ff3b5c" stroke-width="4" stroke-linecap="round"/>
+             <ellipse cx="50" cy="22" rx="12" ry="10" fill="#ff3b5c" opacity=".7"/>
+             <line x1="50" y1="32" x2="38" y2="46" stroke="#ff3b5c" stroke-width="3"/>`
+      }
+    ]
+  },
+  {
+    id:'jambes', zone:'Jambes', icon:'🦵',
+    label:'Appui et position des jambes ?',
+    options:[
+      { val:1, label:'Debout — appui bilatéral', desc:'Stable, deux pieds', color:'green',
+        svg:`<line x1="45" y1="20" x2="40" y2="70" stroke="#00e096" stroke-width="4" stroke-linecap="round"/>
+             <line x1="55" y1="20" x2="60" y2="70" stroke="#00e096" stroke-width="4" stroke-linecap="round"/>
+             <line x1="30" y1="70" x2="50" y2="70" stroke="#00e096" stroke-width="3"/>
+             <line x1="50" y1="70" x2="70" y2="70" stroke="#00e096" stroke-width="3"/>`
+      },
+      { val:2, label:'Appui instable / unilat.', desc:'1 pied ou position précaire', color:'orange',
+        svg:`<line x1="45" y1="20" x2="35" y2="70" stroke="#ff9500" stroke-width="4" stroke-linecap="round"/>
+             <line x1="55" y1="20" x2="65" y2="55" stroke="#ff9500" stroke-width="4" stroke-linecap="round"/>
+             <line x1="25" y1="70" x2="45" y2="70" stroke="#ff9500" stroke-width="3"/>`
+      }
+    ]
+  },
+  {
+    id:'genoux', zone:'Jambes', icon:'⬇',
+    label:'Flexion des genoux ?',
+    modifier:true,
+    options:[
+      { val:0, label:'< 30° ou debout', desc:'Minimal', color:'green',
+        svg:`<line x1="50" y1="15" x2="50" y2="50" stroke="#00e096" stroke-width="4" stroke-linecap="round"/>
+             <line x1="50" y1="50" x2="50" y2="80" stroke="#00e096" stroke-width="4" stroke-linecap="round"/>
+             <text x="35" y="95" fill="#00e096" font-size="9">✓ droit</text>`
+      },
+      { val:1, label:'30–60° (+1)', desc:'Semi-flexion', color:'orange',
+        svg:`<line x1="50" y1="15" x2="50" y2="50" stroke="#ff9500" stroke-width="4" stroke-linecap="round"/>
+             <line x1="50" y1="50" x2="38" y2="78" stroke="#ff9500" stroke-width="4" stroke-linecap="round"/>
+             <text x="32" y="95" fill="#ff9500" font-size="9">≈45°</text>`
+      },
+      { val:2, label:'> 60° (+2)', desc:'Accroupi / agenoullé', color:'red',
+        svg:`<line x1="50" y1="15" x2="50" y2="45" stroke="#ff3b5c" stroke-width="4" stroke-linecap="round"/>
+             <line x1="50" y1="45" x2="30" y2="65" stroke="#ff3b5c" stroke-width="4" stroke-linecap="round"/>
+             <text x="32" y="82" fill="#ff3b5c" font-size="9">>60°</text>`
+      }
+    ]
+  },
+  {
+    id:'bras', zone:'Bras', icon:'💪',
+    label:'Élévation du bras (angle épaule) ?',
+    options:[
+      { val:1, label:'< 20°', desc:'Bras le long du corps', color:'green',
+        svg:`<line x1="50" y1="25" x2="50" y2="65" stroke="#6a90b8" stroke-width="3"/>
+             <line x1="50" y1="30" x2="58" y2="50" stroke="#00e096" stroke-width="4" stroke-linecap="round"/>
+             <circle cx="50" cy="25" r="7" fill="#00e096" opacity=".5"/>`
+      },
+      { val:2, label:'20–45°', desc:'Légère élévation', color:'cyan',
+        svg:`<line x1="50" y1="25" x2="50" y2="65" stroke="#6a90b8" stroke-width="3"/>
+             <line x1="50" y1="30" x2="65" y2="45" stroke="#00d4ff" stroke-width="4" stroke-linecap="round"/>
+             <circle cx="50" cy="25" r="7" fill="#00d4ff" opacity=".5"/>`
+      },
+      { val:3, label:'45–90°', desc:'À hauteur épaule', color:'orange',
+        svg:`<line x1="50" y1="25" x2="50" y2="65" stroke="#6a90b8" stroke-width="3"/>
+             <line x1="50" y1="30" x2="78" y2="35" stroke="#ff9500" stroke-width="4" stroke-linecap="round"/>
+             <circle cx="50" cy="25" r="7" fill="#ff9500" opacity=".5"/>`
+      },
+      { val:4, label:'> 90°', desc:'Au-dessus des épaules', color:'red',
+        svg:`<line x1="50" y1="25" x2="50" y2="65" stroke="#6a90b8" stroke-width="3"/>
+             <line x1="50" y1="30" x2="78" y2="18" stroke="#ff3b5c" stroke-width="4" stroke-linecap="round"/>
+             <circle cx="50" cy="25" r="7" fill="#ff3b5c" opacity=".5"/>`
+      }
+    ]
+  },
+  {
+    id:'avant_bras', zone:'Avant-bras', icon:'🦾',
+    label:'Flexion de l\'avant-bras ?',
+    options:[
+      { val:1, label:'60–100°', desc:'Zone optimale', color:'green',
+        svg:`<line x1="50" y1="20" x2="50" y2="50" stroke="#6a90b8" stroke-width="3"/>
+             <line x1="50" y1="50" x2="72" y2="70" stroke="#00e096" stroke-width="4" stroke-linecap="round"/>
+             <text x="30" y="90" fill="#00e096" font-size="9">✓ 60-100°</text>`
+      },
+      { val:2, label:'< 60° ou > 100°', desc:'Hors zone optimale', color:'red',
+        svg:`<line x1="50" y1="20" x2="50" y2="50" stroke="#6a90b8" stroke-width="3"/>
+             <line x1="50" y1="50" x2="82" y2="55" stroke="#ff3b5c" stroke-width="4" stroke-linecap="round"/>
+             <text x="28" y="90" fill="#ff3b5c" font-size="9">⚠ hors zone</text>`
+      }
+    ]
+  },
+  {
+    id:'poignet', zone:'Poignet', icon:'✋',
+    label:'Position du poignet ?',
+    options:[
+      { val:1, label:'Neutre ≤ 15°', desc:'Aligné avec l\'avant-bras', color:'green',
+        svg:`<line x1="30" y1="50" x2="70" y2="50" stroke="#00e096" stroke-width="4" stroke-linecap="round"/>
+             <text x="28" y="70" fill="#00e096" font-size="9">✓ neutre</text>`
+      },
+      { val:2, label:'Dévié > 15°', desc:'Flexion, extension ou déviation', color:'red',
+        svg:`<line x1="30" y1="50" x2="55" y2="50" stroke="#ff3b5c" stroke-width="4" stroke-linecap="round"/>
+             <line x1="55" y1="50" x2="72" y2="62" stroke="#ff3b5c" stroke-width="4" stroke-linecap="round"/>
+             <text x="26" y="78" fill="#ff3b5c" font-size="9">⚠ dévié</text>`
+      }
+    ]
+  },
+  {
+    id:'charge', zone:'Charge', icon:'📦',
+    label:'Poids de la charge manipulée ?',
+    options:[
+      { val:0, label:'< 5 kg', desc:'Charge légère', color:'green',
+        svg:`<rect x="35" y="40" width="30" height="25" rx="4" fill="#00e096" opacity=".6"/>
+             <text x="42" y="57" fill="#fff" font-size="9" font-weight="bold">léger</text>`
+      },
+      { val:1, label:'5–10 kg (+1)', desc:'Charge modérée', color:'cyan',
+        svg:`<rect x="32" y="38" width="36" height="28" rx="4" fill="#00d4ff" opacity=".6"/>
+             <text x="36" y="57" fill="#fff" font-size="9" font-weight="bold">modéré</text>`
+      },
+      { val:2, label:'> 10 kg (+2)', desc:'Charge lourde', color:'orange',
+        svg:`<rect x="28" y="35" width="44" height="32" rx="4" fill="#ff9500" opacity=".6"/>
+             <text x="34" y="56" fill="#fff" font-size="9" font-weight="bold">lourd</text>`
+      },
+      { val:3, label:'Choc / brusque (+3)', desc:'Prise soudaine ou instable', color:'red',
+        svg:`<rect x="28" y="35" width="44" height="32" rx="4" fill="#ff3b5c" opacity=".6"/>
+             <text x="31" y="56" fill="#fff" font-size="8" font-weight="bold">⚡ choc</text>`
+      }
+    ]
+  }
+];
+
+const COLORS = { green:'#00e096', cyan:'#00d4ff', orange:'#ff9500', red:'#ff3b5c' };
+let photoAnswers = {};
+let photoImg = null;
+
+// ═══════════════════════════════════════════
+// BUILD PAGE
+// ═══════════════════════════════════════════
+function buildPhotoPage(){
+  return `
+  <div class="page-header">
+    <h2>📸 Évaluation Posturale Guidée</h2>
+    <p>Importez une photo de l'opérateur — répondez aux questions visuelles pour calculer le score REBA instantanément</p>
+  </div>
+  <div style="display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start">
+
+    <!-- Colonne gauche : photo + résultat -->
+    <div style="display:flex;flex-direction:column;gap:14px;position:sticky;top:70px">
+
+      <div class="card">
+        <div class="card-head"><span class="card-icon">📷</span><span class="card-title">Photo de référence</span></div>
+        <div class="card-body">
+          <div id="pDrop" style="
+            border:2px dashed var(--border2);border-radius:10px;min-height:180px;
+            background:var(--bg);cursor:pointer;display:flex;flex-direction:column;
+            align-items:center;justify-content:center;gap:8px;transition:all .2s;
+            overflow:hidden;position:relative;
+          " onclick="document.getElementById('pFile').click()"
+             ondragover="event.preventDefault();this.style.borderColor='var(--blue)'"
+             ondragleave="this.style.borderColor='var(--border2)'"
+             ondrop="photoDrop2(event)">
+            <img id="pPreview" style="display:none;width:100%;border-radius:8px;object-fit:cover;max-height:260px"/>
+            <div id="pHolder" style="text-align:center;color:var(--faint);padding:20px">
+              <div style="font-size:2.2rem;margin-bottom:8px">📷</div>
+              <div style="font-size:.85rem;font-weight:600;color:var(--dim)">Cliquer ou glisser une photo</div>
+              <div style="font-size:.72rem;margin-top:4px">JPG · PNG · WEBP</div>
+            </div>
+          </div>
+          <input type="file" id="pFile" accept="image/*" style="display:none" onchange="loadPhotoGuide(event)">
+          <div class="row2" style="gap:7px;margin-top:8px">
+            <button class="btn btn-ghost btn-full" style="font-size:.78rem" onclick="document.getElementById('pFile').click()">🖼 Fichier</button>
+            <button class="btn btn-ghost btn-full" style="font-size:.78rem" onclick="document.getElementById('pCam').click()">📷 Caméra</button>
+          </div>
+          <input type="file" id="pCam" accept="image/*" capture="environment" style="display:none" onchange="loadPhotoGuide(event)">
+        </div>
+      </div>
+
+      <!-- Score en direct -->
+      <div class="card" id="photoScoreCard">
+        <div class="card-head"><span class="card-icon">📊</span><span class="card-title">Score REBA en direct</span></div>
+        <div class="card-body">
+          <div style="text-align:center;margin-bottom:14px">
+            <div id="liveRebaVal" style="font-family:var(--mono);font-size:3rem;font-weight:700;color:var(--faint);line-height:1">—</div>
+            <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:1px;color:var(--faint);margin-top:3px">Score REBA / 15</div>
+            <div id="liveRebaLabel" style="font-size:.82rem;font-weight:600;margin-top:6px;color:var(--faint)">Répondez aux questions →</div>
+          </div>
+          <div id="liveMiniScores" style="display:flex;flex-direction:column;gap:4px"></div>
+          <div style="display:flex;flex-direction:column;gap:7px;margin-top:12px">
+            <button class="btn btn-blue btn-full" onclick="appliquerREBAguide()">🦴 Appliquer dans REBA</button>
+            <button class="btn btn-ghost btn-full" onclick="appliquerPosturesGuide()">🔲 Cocher facteurs posturaux</button>
+            <button class="btn btn-ghost btn-full" onclick="resetPhotoGuide()">🔄 Recommencer</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Colonne droite : questionnaire -->
+    <div id="pQuestions" style="display:flex;flex-direction:column;gap:12px">
+      <div style="padding:24px;text-align:center;color:var(--faint);background:var(--s1);border:1px solid var(--border);border-radius:12px">
+        <div style="font-size:2rem;margin-bottom:8px">📸</div>
+        <div style="font-size:.88rem;color:var(--dim)">Importez une photo pour afficher les questions d'évaluation</div>
+      </div>
+    </div>
+
+  </div>
+  `;
+}
+
+// ═══════════════════════════════════════════
+// CHARGEMENT PHOTO
+// ═══════════════════════════════════════════
+function loadPhotoGuide(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    document.getElementById('pPreview').src = ev.target.result;
+    document.getElementById('pPreview').style.display = 'block';
+    document.getElementById('pHolder').style.display = 'none';
+    photoAnswers = {};
+    renderQuestions();
+    updateLiveScore();
+    showToast('📸 Photo chargée — répondez aux questions');
+  };
+  reader.readAsDataURL(file);
+}
+function photoDrop2(e){
+  e.preventDefault();
+  document.getElementById('pDrop').style.borderColor = 'var(--border2)';
+  const file = e.dataTransfer.files[0];
+  if(file && file.type.startsWith('image/')){
+    const fakeEvent = { target:{ files:[file] } };
+    loadPhotoGuide(fakeEvent);
+  }
+}
+
+// ═══════════════════════════════════════════
+// RENDU DU QUESTIONNAIRE
+// ═══════════════════════════════════════════
+function renderQuestions(){
+  const container = document.getElementById('pQuestions');
+  container.innerHTML = QUESTIONS.map(q => renderQuestion(q)).join('');
+}
+
+function renderQuestion(q){
+  const isAnswered = photoAnswers[q.id] !== undefined;
+  const selectedVal = photoAnswers[q.id];
+
+  const optHtml = q.options.map(opt => {
+    const isSel = selectedVal === opt.val;
+    const c = COLORS[opt.color] || '#6a90b8';
+    return `
+      <div onclick="selectAnswer('${q.id}',${opt.val})" style="
+        flex:1;min-width:0;background:var(--bg);border:2px solid ${isSel ? c : 'var(--border)'};
+        border-radius:9px;padding:10px 6px;cursor:pointer;text-align:center;
+        transition:all .18s;${isSel ? `background:${c}18;box-shadow:0 0 0 1px ${c}40;` : ''}
+      ">
+        <svg viewBox="0 0 100 100" style="width:64px;height:64px;display:block;margin:0 auto 6px">
+          ${opt.svg}
+        </svg>
+        <div style="font-size:.78rem;font-weight:700;color:${isSel?c:'var(--text)'};line-height:1.2;margin-bottom:2px">${opt.label}</div>
+        <div style="font-size:.68rem;color:${isSel?c:'var(--faint)'}">${opt.desc}</div>
+      </div>`;
+  }).join('');
+
+  const bgColor = isAnswered ? 'background:rgba(26,122,255,.04);border-color:var(--border2)' : '';
+  return `
+    <div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden;${isAnswered?'border-color:var(--border2)':''}">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;${isAnswered?'background:rgba(26,122,255,.04)':''}">
+        <span style="font-size:1.1rem">${q.icon}</span>
+        <span style="font-size:.82rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--dim)">${q.zone}</span>
+        <span style="font-size:.85rem;color:var(--text);flex:1">${q.label}</span>
+        ${isAnswered ? `<span style="font-family:var(--mono);font-size:.72rem;background:var(--blue-g);border:1px solid var(--blue);color:var(--blue);padding:2px 7px;border-radius:4px">✓ ${q.modifier?'+':''} ${selectedVal}</span>` : '<span style="font-size:.7rem;color:var(--faint)">— à coter</span>'}
+      </div>
+      <div style="padding:12px 14px;display:flex;gap:7px;flex-wrap:wrap">
+        ${optHtml}
+      </div>
+    </div>`;
+}
+
+function selectAnswer(id, val){
+  photoAnswers[id] = val;
+  renderQuestions();
+  updateLiveScore();
+}
+
+// ═══════════════════════════════════════════
+// CALCUL REBA LIVE
+// ═══════════════════════════════════════════
+function updateLiveScore(){
+  const a = photoAnswers;
+  const answered = Object.keys(a).length;
+  const total = QUESTIONS.length;
+
+  // Calcul score A (tronc + cou + jambes)
+  const tronc = (a.tronc||0) + (a.tronc_tw||0);
+  const cou = a.cou||0;
+  const jambes = (a.jambes||0) + (a.genoux||0);
+  const scoreA = Math.min(tronc + cou + jambes, 12);
+
+  // Calcul score B (bras + avant-bras + poignet)
+  const bras = a.bras||0;
+  const avantBras = a.avant_bras||0;
+  const poignet = a.poignet||0;
+  const scoreB = Math.min(bras + avantBras + poignet, 12);
+
+  // Score C avec charge
+  const charge = a.charge||0;
+  const scoreC = Math.min(scoreA + charge, 12);
+  const scoreD = Math.min(scoreB + charge, 12);
+  const rebaScore = answered < 3 ? null : Math.min(scoreC + scoreD, 15);
+
+  // Affichage
+  const valEl = document.getElementById('liveRebaVal');
+  const lblEl = document.getElementById('liveRebaLabel');
+
+  if(rebaScore === null){
+    valEl.textContent = '—';
+    valEl.style.color = 'var(--faint)';
+    lblEl.textContent = `${answered}/${total} questions répondues`;
+    lblEl.style.color = 'var(--faint)';
+  } else {
+    let color, label;
+    if(rebaScore <= 3){ color='var(--green)'; label='Risque faible'; }
+    else if(rebaScore <= 7){ color='var(--orange)'; label='Risque moyen — Amélioration recommandée'; }
+    else if(rebaScore <= 10){ color='var(--red)'; label='Risque élevé — Modification rapide'; }
+    else { color='var(--red)'; label='⚠ Risque très élevé — Action immédiate'; }
+    valEl.textContent = rebaScore;
+    valEl.style.color = color;
+    lblEl.textContent = label;
+    lblEl.style.color = color;
+  }
+
+  // Mini scores par zone
+  const zones = [
+    { z:'Tronc', s: tronc, max:5 },
+    { z:'Cou',   s: cou,   max:3 },
+    { z:'Jambes',s: jambes,max:4 },
+    { z:'Bras',  s: bras,  max:5 },
+    { z:'Av-bras',s:avantBras,max:2 },
+    { z:'Poignet',s:poignet,max:3 },
+    { z:'Charge', s:charge, max:3 },
+  ];
+  document.getElementById('liveMiniScores').innerHTML = zones.map(z => {
+    const pct = z.max>0 ? (z.s/z.max)*100 : 0;
+    const c = pct>66?'var(--red)':pct>33?'var(--orange)':'var(--green)';
+    return `<div style="display:flex;align-items:center;gap:7px">
+      <span style="font-size:.7rem;color:var(--faint);width:55px;flex-shrink:0">${z.z}</span>
+      <div style="flex:1;height:4px;background:var(--s3);border-radius:2px;overflow:hidden">
+        <div style="height:100%;width:${Math.min(pct,100)}%;background:${c};transition:width .3s"></div>
+      </div>
+      <span style="font-family:var(--mono);font-size:.7rem;color:${z.s>0?'#fff':'var(--faint)'};">${z.s||'—'}</span>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+// APPLICATIONS
+// ═══════════════════════════════════════════
+function appliquerREBAguide(){
+  const a = photoAnswers;
+  const map = {
+    tronc:'rTronc', tronc_tw:'rTroncTw', cou:'rCou',
+    jambes:'rJambes', genoux:'rGenoux',
+    bras:'rBras', avant_bras:'rAvantBras',
+    poignet:'rPoignet', charge:'rCharge'
+  };
+  let n=0;
+  Object.entries(map).forEach(([k,id])=>{
+    if(a[k]===undefined) return;
+    const el=document.getElementById(id);
+    if(!el) return;
+    // Trouver option la plus proche
+    const opts=Array.from(el.options);
+    let best=0, bestD=Infinity;
+    opts.forEach((o,i)=>{ const d=Math.abs(parseFloat(o.value)-a[k]); if(d<bestD){bestD=d;best=i;} });
+    el.selectedIndex=best; n++;
+  });
+  if(typeof calcReba==='function') calcReba();
+  // Aller sur onglet REBA
+  document.querySelectorAll('.nav-tab')[3]?.click();
+  showToast('✅ '+n+' valeurs appliquées dans REBA');
+}
+
+function appliquerPosturesGuide(){
+  const a = photoAnswers;
+  // Mapping : dos fléchi si tronc >= 3, torsion si tronc_tw==1, hauteur si bras>=3, charge_distance si avant_bras==2, posture_statique si poignet==2
+  const rules = [
+    { chk:'chk0', pi:'pi0', test: ()=> (a.tronc||0) >= 3 },
+    { chk:'chk1', pi:'pi1', test: ()=> (a.tronc_tw||0) >= 1 },
+    { chk:'chk2', pi:'pi2', test: ()=> (a.bras||0) >= 3 },
+    { chk:'chk3', pi:'pi3', test: ()=> (a.avant_bras||0) >= 2 },
+    { chk:'chk4', pi:'pi4', test: ()=> (a.poignet||0) >= 2 },
+  ];
+  let n=0;
+  rules.forEach(r=>{
+    const chk=document.getElementById(r.chk);
+    const item=document.getElementById(r.pi);
+    if(chk && item && r.test()){
+      chk.checked=true; item.classList.add('sel'); n++;
+    }
+  });
+  if(typeof updatePenBar==='function') updatePenBar();
+  if(typeof updateGauge==='function') updateGauge();
+  document.querySelectorAll('.nav-tab')[0]?.click();
+  showToast('✅ '+n+' facteur(s) posturaux cochés dans Observation');
+}
+
+function resetPhotoGuide(){
+  photoAnswers={};
+  document.getElementById('pPreview').style.display='none';
+  document.getElementById('pHolder').style.display='flex';
+  document.getElementById('pQuestions').innerHTML=`
+    <div style="padding:24px;text-align:center;color:var(--faint);background:var(--s1);border:1px solid var(--border);border-radius:12px">
+      <div style="font-size:2rem;margin-bottom:8px">📸</div>
+      <div style="font-size:.88rem;color:var(--dim)">Importez une photo pour afficher les questions</div>
+    </div>`;
+  document.getElementById('liveRebaVal').textContent='—';
+  document.getElementById('liveRebaVal').style.color='var(--faint)';
+  document.getElementById('liveRebaLabel').textContent='Répondez aux questions →';
+  document.getElementById('liveMiniScores').innerHTML='';
+  showToast('🔄 Réinitialisé');
+}
+</script>

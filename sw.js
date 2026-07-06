@@ -66,7 +66,12 @@ self.addEventListener('fetch', (event) => {
       if (cached) return cached;
       return fetchWithTimeout(req, undefined, 6000)
         .then((res) => {
-          if (res && res.ok) {
+          // Les requêtes cross-origin en mode no-cors (ex: <script src> vers un CDN sans
+          // l'attribut crossorigin) renvoient une réponse "opaque" : status 0, res.ok toujours
+          // false, impossible à inspecter. On la met quand même en cache (c'est le seul moyen
+          // de rendre Chart.js/Google Fonts disponibles hors-ligne) ; pour une réponse non
+          // opaque, on ne cache que si elle est effectivement valide.
+          if (res && (res.type === 'opaque' || res.ok)) {
             const copy = res.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
           }

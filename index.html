@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ErgoTrack PRO — Analyse Complète Manutention Manuelle</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='84'%3E%E2%9A%96%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<meta name="description" content="ErgoTrack PRO — Outil SST de terrain pour l'évaluation des risques liés à la manutention manuelle (NIOSH, MAC, KIM, REBA).">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
@@ -17,8 +19,8 @@
   --orange:#ff9500; --orange-g:rgba(255,149,0,0.1);
   --red:#ff3b5c; --red-g:rgba(255,59,92,0.1);
   --purple:#a855f7; --purple-g:rgba(168,85,247,0.1);
-  --mono:'JetBrains Mono',monospace;
-  --sans:'Inter',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',monospace;
+  --sans:'Inter',system-ui,-apple-system,sans-serif;
   --r:10px; --r2:14px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -312,6 +314,41 @@ textarea{resize:vertical;min-height:70px}
 
 /* SIGNATURE: scan line sur le header nav */
 .nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--blue),var(--cyan),transparent);opacity:.5}
+
+/* ACCESSIBILITÉ : focus clavier visible */
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{
+  outline:2px solid var(--cyan);outline-offset:2px;border-radius:4px;
+}
+.pcheck input{position:absolute;opacity:0;width:1px;height:1px;overflow:hidden}
+.pcheck:focus-within .pchk-box{outline:2px solid var(--cyan);outline-offset:2px}
+
+/* VALIDATION */
+.input-error{border-color:var(--red) !important;box-shadow:0 0 0 3px rgba(255,59,92,.18) !important;animation:shake .3s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+
+/* HAMBURGER MOBILE */
+.nav-hamburger{display:none;background:var(--s2);border:1px solid var(--border);color:var(--dim);width:34px;height:34px;border-radius:7px;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0}
+.nav-hamburger:hover{color:var(--text);border-color:var(--border2)}
+
+/* ACTION BUTTONS (plan d'action / historique) */
+.action-btns{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
+.btn-del{color:var(--red) !important;border-color:var(--red) !important}
+.btn-del:hover{background:var(--red-g) !important}
+.hist-right{display:flex;align-items:center;gap:8px}
+
+/* BANDEAU RESTAURATION */
+.restore-banner{background:var(--blue-g);border:1px solid var(--blue);border-radius:9px;padding:10px 14px;font-size:.8rem;color:var(--text);display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.restore-banner strong{color:#fff}
+
+@media(max-width:600px){
+  .nav-hamburger{display:flex}
+  .nav-tabs.mobile-open{
+    display:flex !important;position:fixed;top:52px;left:0;right:0;
+    flex-direction:column;background:var(--s1);border-bottom:1px solid var(--border);
+    padding:8px;gap:4px;z-index:299;box-shadow:0 12px 30px rgba(0,0,0,.5);margin-left:0;
+  }
+  .nav-tabs.mobile-open .nav-tab{width:100%;text-align:left;padding:11px 14px;font-size:.85rem}
+}
 </style>
 </head>
 <body>
@@ -323,7 +360,8 @@ textarea{resize:vertical;min-height:70px}
     ErgoTrack <span style="color:var(--cyan);margin-left:2px">PRO</span>
     <span class="nav-tag">v3.0</span>
   </div>
-  <div class="nav-tabs">
+  <button class="nav-hamburger" onclick="toggleMobileMenu()" aria-label="Ouvrir le menu de navigation" aria-expanded="false" id="hamburgerBtn">☰</button>
+  <div class="nav-tabs" id="navTabs">
     <button class="nav-tab active" onclick="goPage('obs')">📡 Observation</button>
     <button class="nav-tab" onclick="goPage('niosh')">🔬 NIOSH</button>
     <button class="nav-tab" onclick="goPage('mac')">📋 MAC / KIM</button>
@@ -334,6 +372,7 @@ textarea{resize:vertical;min-height:70px}
   <div class="nav-right">
     <span class="sid" id="sid">—</span>
     <button class="btn btn-ghost" style="font-size:.72rem;padding:5px 10px" onclick="exportCSV()">📥 CSV</button>
+    <button class="btn btn-ghost" style="font-size:.72rem;padding:5px 10px" onclick="reinitialiserTout()" aria-label="Réinitialiser toutes les données">🗑 Reset</button>
   </div>
 </nav>
 
@@ -348,7 +387,7 @@ textarea{resize:vertical;min-height:70px}
 
     <!-- Identification -->
     <div class="card">
-      <div class="card-head"><span class="card-icon">🏷</span><span class="card-title">Identification du poste</span></div>
+      <div class="card-head"><span class="card-icon">🏷</span><span class="card-title">Identification du poste</span><button class="btn btn-ghost" style="margin-left:auto;font-size:.68rem;padding:4px 9px" onclick="nouvelleObservation()">🔄 Nouvelle observation</button></div>
       <div class="card-body">
         <div class="field"><label class="lbl">Poste de travail<span>*</span></label>
           <input id="poste" placeholder="Ex : Agent de piste — manutention bagages"></div>
@@ -458,7 +497,7 @@ textarea{resize:vertical;min-height:70px}
     </div>
 
     <!-- Alert + seuil genre -->
-    <div id="alertLive" class="alert idle">💤 En attente de démarrage</div>
+    <div id="alertLive" class="alert idle" role="status" aria-live="polite">💤 En attente de démarrage</div>
     <div class="info-box" id="genreInfo">
       ℹ️ Seuil journalier : <strong id="seuilGenreLabel">7 500 kg</strong> (Homme, décret ergonomique FR / EN 1005-2). Les postures cochées réduisent ce seuil par pénalité NIOSH.
     </div>
@@ -468,7 +507,8 @@ textarea{resize:vertical;min-height:70px}
       <div class="card-head"><span class="card-icon">📦</span><span class="card-title">Saisie des levages en temps réel</span></div>
       <div class="card-body">
         <button class="levage-btn" id="btnLevage" onclick="enrLevage()" disabled>📦 ENREGISTRER UN LEVAGE</button>
-        <div class="levage-hint">Appuyer à chaque prise de charge observée sur le terrain</div>
+        <div class="levage-hint">Appuyer à chaque prise de charge observée sur le terrain · raccourci clavier <strong>[Espace]</strong></div>
+        <button class="btn btn-ghost btn-full" style="margin-top:8px;font-size:.78rem" onclick="undoLastLevage()">↩ Annuler le dernier levage</button>
         <div class="pbar-wrap" style="margin-top:10px">
           <div class="pbar-row"><span>Tonnage vs seuil ajusté</span><span id="pbPct">0%</span></div>
           <div class="pbar-outer"><div class="pbar-inner" id="pbBar" style="width:0%"></div></div>
@@ -831,7 +871,7 @@ textarea{resize:vertical;min-height:70px}
     <div class="modal-head">
       <div><div class="modal-title">📋 Rapport d'Audit Ergonomique Complet</div>
         <div class="modal-sub" id="modalSub">—</div></div>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+      <button class="modal-close" onclick="closeModal()" aria-label="Fermer le rapport">✕</button>
     </div>
     <div class="modal-body" id="modalBody"></div>
     <div class="modal-footer">
@@ -842,7 +882,7 @@ textarea{resize:vertical;min-height:70px}
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 // ═══════════════════════════════════════════════════════
@@ -869,14 +909,38 @@ function goPage(id) {
   if(id==='niosh') calcNiosh();
   if(id==='mac') initMAC();
   if(id==='reba') calcReba();
+  closeMobileMenu();
+}
+
+// ═══════════════════════════════════════════════════════
+// MENU MOBILE
+// ═══════════════════════════════════════════════════════
+function toggleMobileMenu(){
+  const nav=document.getElementById('navTabs');
+  const open=nav.classList.toggle('mobile-open');
+  document.getElementById('hamburgerBtn').setAttribute('aria-expanded',open?'true':'false');
+}
+function closeMobileMenu(){
+  document.getElementById('navTabs').classList.remove('mobile-open');
+  document.getElementById('hamburgerBtn').setAttribute('aria-expanded','false');
 }
 
 // ═══════════════════════════════════════════════════════
 // TIMER
 // ═══════════════════════════════════════════════════════
+function markError(id){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.classList.remove('input-error'); void el.offsetWidth; el.classList.add('input-error');
+  const clear=()=>{el.classList.remove('input-error');el.removeEventListener('input',clear)};
+  el.addEventListener('input',clear);
+  el.focus();
+}
 function toggleTimer() {
+  const poste = document.getElementById('poste').value.trim();
   const p = parseFloat(document.getElementById('poids').value);
-  if(!p||p<=0){showToast('⚠ Saisissez le poids de la charge');return}
+  if(!S.running && !poste){markError('poste');showToast('⚠ Renseignez le poste de travail');return}
+  if(!p||p<=0){markError('poids');showToast('⚠ Saisissez le poids de la charge');return}
   if(!S.running) {
     S.running=true; S.startTime=Date.now()-S.elapsed;
     S.interval=setInterval(tick,100);
@@ -942,7 +1006,7 @@ function onPosture(i){
   const cb=document.getElementById('chk'+i);
   const item=document.getElementById('pi'+i);
   cb.checked?item.classList.add('sel'):item.classList.remove('sel');
-  updatePenBar(); updateGauge();
+  updatePenBar(); updateGauge(); saveState();
 }
 function getPenCoeff(){
   let p=1;
@@ -971,10 +1035,27 @@ function enrLevage(){
   const rythme=interval?(60/interval).toFixed(1):null;
   S.levages.push({ts:now,tSec,poids,dist,rythme});
   updateKPIs(); addLogRow(S.levages.length,tSec,poids,getTotalMasse(),rythme);
-  updateGauge(); updateChart();
+  updateGauge(); updateChart(); saveState();
   const btn=document.getElementById('btnLevage');
   btn.style.transform='scale(.95)'; setTimeout(()=>btn.style.transform='',120);
   showToast('+'+poids+' kg enregistré');
+}
+function undoLastLevage(){
+  if(S.levages.length===0){showToast('⚠ Aucun levage à annuler');return}
+  S.levages.pop();
+  rebuildLog(); updateKPIs(); updateGauge(); updateChart(); saveState();
+  showToast('↩ Dernier levage annulé');
+}
+function rebuildLog(){
+  const body=document.getElementById('logBody');
+  body.innerHTML='';
+  if(S.levages.length===0){
+    body.innerHTML='<div class="log-empty" id="logEmpty">Aucun levage enregistré</div>';
+    document.getElementById('logBadge').textContent='0 entrées';
+    return;
+  }
+  let cumul=0;
+  S.levages.forEach((l,i)=>{cumul+=l.poids;addLogRow(i+1,l.tSec,l.poids,cumul,l.rythme)});
 }
 function getTotalMasse(){return S.levages.reduce((a,l)=>a+l.poids,0)}
 function getTotalDist(){return S.levages.reduce((a,l)=>a+(l.dist||0),0)}
@@ -1206,9 +1287,9 @@ function addAction(auto){
   const poste=auto?auto.poste:document.getElementById('acPoste').value;
   const cat=auto?auto.cat:'C';
   const desc=auto?auto.desc:document.getElementById('acDesc').value;
-  const action={id:Date.now(),title,prio,resp,date,poste,cat,desc,done:false};
+  const action={id:Date.now()+Math.floor(Math.random()*1000),title,prio,resp,date,poste,cat,desc,done:false};
   S.actions.push(action);
-  renderActions();
+  renderActions(); saveState();
   if(!auto){
     ['acTitle','acResp','acDate','acPoste','acDesc'].forEach(id=>document.getElementById(id).value='');
     showToast('✅ Action ajoutée');
@@ -1231,12 +1312,21 @@ function renderActions(){
         </div>
         ${a.desc?`<div style="font-size:.75rem;color:var(--dim);margin-top:4px">${a.desc}</div>`:''}
       </div>
-      <button class="action-status" onclick="toggleAction(${a.id})">${a.done?'✅ Fait':'⏳ En cours'}</button>
+      <div class="action-btns">
+        <button class="action-status" onclick="toggleAction(${a.id})">${a.done?'✅ Fait':'⏳ En cours'}</button>
+        <button class="action-status btn-del" onclick="deleteAction(${a.id})" aria-label="Supprimer l'action">🗑 Suppr.</button>
+      </div>
     </div>`).join('');
 }
 function toggleAction(id){
   const a=S.actions.find(x=>x.id===id);
-  if(a){a.done=!a.done;renderActions()}
+  if(a){a.done=!a.done;renderActions();saveState()}
+}
+function deleteAction(id){
+  if(!confirm('Supprimer définitivement cette action du plan ?'))return;
+  S.actions=S.actions.filter(a=>a.id!==id);
+  renderActions(); saveState();
+  showToast('🗑 Action supprimée');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1282,7 +1372,7 @@ function lancerAnalyse(){
   recos.forEach(r=>addAction({title:r.title,prio:r.prio,poste,cat:r.cat,desc:r.desc}));
   const ana={id:Date.now(),poste,operateur,masse,sa,pct,verdict:verdict.cls,date:dateStr,n,rythme};
   S.analyses.push(ana);
-  renderHistorique();
+  renderHistorique(); saveState();
   document.getElementById('modalSub').textContent=poste+' — '+dateStr;
   document.getElementById('modalBody').innerHTML=`
     <div class="msec"><div class="msec-title">📌 Identification</div>
@@ -1352,7 +1442,10 @@ function renderHistorique(){
     <div class="hist-item">
       <div><div class="hist-name">${a.poste}</div>
         <div class="hist-meta">${a.date} — ${a.n} levages — ${a.masse.toFixed(1)} kg / ${a.sa.toFixed(0)} kg max</div></div>
-      <span class="hist-badge hb-${a.verdict}">${Math.round(a.pct)}%</span>
+      <div class="hist-right">
+        <span class="hist-badge hb-${a.verdict}">${Math.round(a.pct)}%</span>
+        <button class="action-status btn-del" onclick="deleteAnalyse(${a.id})" aria-label="Supprimer cette analyse">🗑</button>
+      </div>
     </div>`).join('');
   // Chart comparatif
   const ctx=document.getElementById('chartCompar').getContext('2d');
@@ -1370,6 +1463,128 @@ function renderHistorique(){
     chartCompar.update();
   }
 }
+function deleteAnalyse(id){
+  if(!confirm('Supprimer cette analyse de l\'historique ? Cette action est irréversible.'))return;
+  S.analyses=S.analyses.filter(a=>a.id!==id);
+  renderHistorique(); saveState();
+  showToast('🗑 Analyse supprimée de l\'historique');
+}
+
+// ═══════════════════════════════════════════════════════
+// NOUVELLE OBSERVATION / RESET
+// ═══════════════════════════════════════════════════════
+function nouvelleObservation(){
+  if(S.levages.length>0 && !confirm('Démarrer une nouvelle observation ? Le poste actuel sera réinitialisé (le plan d\'action et l\'historique sont conservés).'))return;
+  if(S.interval)clearInterval(S.interval);
+  S.running=false; S.elapsed=0; S.startTime=0; S.levages=[];
+  S.sessionId='SGT-'+Date.now().toString(36).toUpperCase();
+  document.getElementById('sid').textContent=S.sessionId;
+  ['poste','operateur','entite','age','poids','distTransport','notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('genre').value='H';
+  document.getElementById('dureePoste').value='7';
+  document.getElementById('typePrise').value='two_good';
+  for(let i=0;i<5;i++){
+    document.getElementById('chk'+i).checked=false;
+    document.getElementById('pi'+i).classList.remove('sel');
+  }
+  updatePenBar();
+  document.getElementById('timerDig').textContent='00:00:00';
+  document.getElementById('timerDig').className='timer-dig';
+  document.getElementById('timerLbl').textContent='EN ATTENTE';
+  document.getElementById('btnStart').textContent='▶ Démarrer';
+  document.getElementById('btnStart').className='btn btn-green btn-lg btn-full';
+  document.getElementById('btnStop').disabled=true;
+  document.getElementById('btnLevage').disabled=true;
+  document.getElementById('poids').disabled=false;
+  rebuildLog(); updateKPIs(); updateGauge(); updateChart();
+  setAlert('idle','💤 En attente de démarrage');
+  saveState();
+  showToast('🔄 Nouvelle observation prête');
+}
+function reinitialiserTout(){
+  if(!confirm('Effacer TOUTES les données (observation en cours, plan d\'action, historique) ? Cette action est irréversible.'))return;
+  try{localStorage.removeItem(STORAGE_KEY)}catch(e){}
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════════════
+// PERSISTANCE (localStorage)
+// ═══════════════════════════════════════════════════════
+const STORAGE_KEY='ergotrak_pro_state_v1';
+let saveTimer=null;
+function fval(id){const el=document.getElementById(id);return el?el.value:''}
+function setFval(id,v){if(v===undefined||v===null)return;const el=document.getElementById(id);if(el)el.value=v}
+function saveState(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{
+    const data={
+      sessionId:S.sessionId, elapsed:S.elapsed,
+      levages:S.levages, actions:S.actions, analyses:S.analyses,
+      form:{
+        poste:fval('poste'),operateur:fval('operateur'),entite:fval('entite'),
+        genre:fval('genre'),age:fval('age'),poids:fval('poids'),
+        distTransport:fval('distTransport'),dureePoste:fval('dureePoste'),
+        typePrise:fval('typePrise'),notes:fval('notes'),
+        postures:[0,1,2,3,4].map(i=>document.getElementById('chk'+i).checked)
+      },
+      savedAt:Date.now()
+    };
+    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}catch(e){}
+  },250);
+}
+function restoreState(){
+  let data;
+  try{data=JSON.parse(localStorage.getItem(STORAGE_KEY))}catch(e){data=null}
+  if(!data)return;
+  const hasContent=(data.levages&&data.levages.length)||(data.actions&&data.actions.length)||(data.analyses&&data.analyses.length)||(data.form&&data.form.poste);
+  if(!hasContent)return;
+  if(data.form){
+    const f=data.form;
+    setFval('poste',f.poste);setFval('operateur',f.operateur);setFval('entite',f.entite);
+    setFval('genre',f.genre);setFval('age',f.age);setFval('poids',f.poids);
+    setFval('distTransport',f.distTransport);setFval('dureePoste',f.dureePoste);
+    setFval('typePrise',f.typePrise);setFval('notes',f.notes);
+    document.getElementById('genre').dispatchEvent(new Event('change'));
+    (f.postures||[]).forEach((sel,i)=>{
+      if(!sel)return;
+      document.getElementById('chk'+i).checked=true;
+      document.getElementById('pi'+i).classList.add('sel');
+    });
+    updatePenBar();
+  }
+  S.sessionId=data.sessionId||S.sessionId;
+  document.getElementById('sid').textContent=S.sessionId;
+  S.elapsed=data.elapsed||0;
+  S.levages=data.levages||[];
+  S.actions=data.actions||[];
+  S.analyses=data.analyses||[];
+  if(S.elapsed>0 && S.levages.length>0){
+    document.getElementById('timerDig').textContent=fmtTime(Math.floor(S.elapsed/1000));
+    document.getElementById('timerDig').className='timer-dig pause';
+    document.getElementById('timerLbl').textContent='EN PAUSE (restauré)';
+    document.getElementById('btnStart').textContent='▶ Reprendre';
+    document.getElementById('btnStart').className='btn btn-green btn-lg btn-full';
+    document.getElementById('btnStop').disabled=false;
+    document.getElementById('btnLevage').disabled=true;
+  }
+  rebuildLog(); updateKPIs(); updateGauge(); updateChart();
+  renderActions(); renderHistorique();
+  showToast('🔄 Session précédente restaurée ('+S.levages.length+' levage(s), '+S.actions.length+' action(s))');
+}
+document.getElementById('page-obs').addEventListener('input',()=>saveState());
+document.getElementById('page-obs').addEventListener('change',()=>saveState());
+
+// ═══════════════════════════════════════════════════════
+// RACCOURCIS CLAVIER
+// ═══════════════════════════════════════════════════════
+document.addEventListener('keydown',(e)=>{
+  if(e.key==='Escape'){closeModal();closeMobileMenu();return}
+  const tag=(document.activeElement.tagName||'').toLowerCase();
+  if(tag==='input'||tag==='textarea'||tag==='select')return;
+  const obsActive=document.getElementById('page-obs').classList.contains('active');
+  if(!obsActive)return;
+  if(e.code==='Space'&&S.running){e.preventDefault();enrLevage()}
+});
 
 // ═══════════════════════════════════════════════════════
 // UTILS
@@ -1402,9 +1617,6 @@ calcNiosh();
 calcKIM();
 calcReba();
 </script>
-</body>
-</html>
-
 
 <!-- MODULE PHOTO — Évaluation posturale guidée sans IA -->
 <script>
@@ -1897,4 +2109,9 @@ function resetPhotoGuide(){
   document.getElementById('liveMiniScores').innerHTML='';
   showToast('🔄 Réinitialisé');
 }
+
+// Restauration de la session précédente (après chargement complet des modules)
+restoreState();
 </script>
+</body>
+</html>

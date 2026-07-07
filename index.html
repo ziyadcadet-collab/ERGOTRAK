@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ErgoTrack PRO — Analyse Complète Manutention Manuelle</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='84'%3E%E2%9A%96%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0d1b2e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ErgoTrack">
 <meta name="description" content="ErgoTrack PRO — Outil SST de terrain pour l'évaluation des risques liés à la manutention manuelle (NIOSH, MAC, KIM, REBA).">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
@@ -244,8 +251,8 @@ textarea{resize:vertical;min-height:70px}
 .hb-danger{background:var(--red-g);color:var(--red);border:1px solid var(--red)}
 
 /* CHART WRAP */
-.chart-wrap{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:14px;position:relative}
-.chart-wrap canvas{max-height:200px}
+.chart-wrap{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:14px;position:relative;overflow:hidden}
+.chart-wrap canvas{max-height:200px;max-width:100%}
 
 /* MODAL */
 .overlay{display:none;position:fixed;inset:0;background:rgba(5,10,24,.92);backdrop-filter:blur(5px);z-index:500;align-items:center;justify-content:center;padding:16px}
@@ -383,10 +390,33 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
   .action-btns{flex-direction:row;flex-basis:100%;width:100%;margin-top:4px}
   .action-btns .action-status{flex:1}
 }
+.privacy-tab-mobile{display:none}
 @media(max-width:420px){
   .row2,.row3,.row4{grid-template-columns:1fr}
   .nav-tag{display:none}
   .nav-right .btn-label{display:none}
+  .nav-right .privacy-btn{display:none}
+  .nav-tabs.mobile-open .privacy-tab-mobile{display:block;border-top:1px solid var(--border);margin-top:4px;padding-top:8px}
+}
+
+/* IMPRESSION / EXPORT PDF : n'imprime que le rapport (modale) ouvert */
+@media print{
+  body *{visibility:hidden}
+  .modal,.modal *{visibility:visible}
+  .overlay{position:static;background:none;backdrop-filter:none;display:block;padding:0}
+  .modal{position:absolute;left:0;top:0;width:100%;max-width:100%;max-height:none;overflow:visible;box-shadow:none;border:none;animation:none;background:#fff}
+  .modal-close,.modal-footer{display:none !important}
+  .modal-head{border-bottom:1px solid #ccc}
+  .modal-title{color:#000}
+  .modal-sub{color:#333}
+  .msec-title{color:#555;border-bottom:1px solid #ccc}
+  .rrow{border-bottom:1px solid #eee;color:#000}
+  .rrow span:first-child{color:#555}
+  .rrow strong{color:#000}
+  .verdict-box{border:1px solid #999;background:#f5f5f5 !important}
+  .verdict-title.ok,.verdict-desc,.verdict-title.warn,.verdict-title.danger{color:#000 !important}
+  .reco-item{background:#f9f9f9;border-color:#ddd;color:#333;break-inside:avoid}
+  .reco-item strong{color:#000}
 }
 </style>
 </head>
@@ -407,11 +437,13 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
     <button class="nav-tab" onclick="goPage('reba')">🦴 REBA</button>
     <button class="nav-tab" onclick="goPage('actions')">✅ Plan d'action</button>
     <button class="nav-tab" onclick="goPage('historique')">🗂 Historique</button>
+    <button class="nav-tab privacy-tab-mobile" onclick="openPrivacyModal();closeMobileMenu()">🔒 Confidentialité</button>
   </div>
   <div class="nav-right">
     <span class="sid" id="sid">—</span>
     <button class="btn btn-ghost" style="font-size:.72rem;padding:7px 11px" onclick="exportCSV()">📥<span class="btn-label"> CSV</span></button>
     <button class="btn btn-ghost" style="font-size:.72rem;padding:7px 11px" onclick="reinitialiserTout()" aria-label="Réinitialiser toutes les données">🗑<span class="btn-label"> Reset</span></button>
+    <button class="btn btn-ghost privacy-btn" style="font-size:.72rem;padding:7px 11px" onclick="openPrivacyModal()" aria-label="Confidentialité des données">🔒</button>
   </div>
 </nav>
 
@@ -672,7 +704,8 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
   <div class="card">
     <div class="card-head"><span class="card-icon">🇬🇧</span><span class="card-title">Grille MAC — HSE</span></div>
     <div class="card-body">
-      <div class="info-box">Coter chaque facteur de 0 (Vert) à 3 (Rouge). Score total ≥ 16 = risque élevé.</div>
+      <div class="info-box">Coter chaque facteur de 0 (Vert) à 3 (Rouge). Score total ≥ 16 = risque élevé.
+        <br><strong>⚠ Estimation simplifiée</strong> — l'outil HSE officiel utilise des graphiques combinés (poids×fréquence, distance, etc.) et non une simple addition uniforme sur 11 facteurs. Utile pour une première évaluation terrain, mais ne remplace pas la grille MAC/RAPP officielle du HSE pour une décision réglementaire.</div>
       <div class="mac-grid" id="macGrid"></div>
       <div class="mac-total">
         <div class="mac-total-val" id="macTotalVal" style="color:var(--green)">0</div>
@@ -685,24 +718,26 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
   <div class="card">
     <div class="card-head"><span class="card-icon">🇩🇪</span><span class="card-title">Méthode KIM — BAuA</span></div>
     <div class="card-body">
-      <div class="info-box">Key Indicator Method — norme allemande DIN EN 1005-2. Évalue les risques de surcharge physique.</div>
+      <div class="info-box">Key Indicator Method — norme allemande DIN EN 1005-2. Évalue les risques de surcharge physique.
+        <br><strong>⚠ Estimation simplifiée</strong> — reproduit la structure officielle (Score = Temps × (Poids + Posture + Conditions)) avec des échelles de points approximées. Ne remplace pas la fiche KIM-LHC certifiée BAuA pour un audit réglementaire.</div>
       <div class="kim-section">
         <div class="kim-section-title">Conditions de levage</div>
+        <div class="kim-row"><label>Genre de l'opérateur</label>
+          <select id="kGenre" onchange="calcKIM()"><option value="H">Homme</option><option value="F">Femme</option></select></div>
         <div class="kim-row"><label>Poids de la charge (kg)</label><input id="kPoids" type="number" value="15" min="1" step="0.5" oninput="calcKIM()"></div>
-        <div class="kim-row"><label>Fréquence (fois/min)</label><input id="kFreq" type="number" value="1" min="0.1" step="0.1" oninput="calcKIM()"></div>
         <div class="kim-row"><label>Durée totale (h)</label><input id="kDuree" type="number" value="2" min="0.25" step="0.25" oninput="calcKIM()"></div>
         <div class="kim-row"><label>Posture de travail</label>
           <select id="kPosture" onchange="calcKIM()">
             <option value="1">Debout sans contrainte</option>
-            <option value="1.2">Légèrement penché</option>
-            <option value="1.5">Fortement penché / torsion</option>
-            <option value="2">Position forcée</option>
+            <option value="2">Légèrement penché</option>
+            <option value="4">Fortement penché / torsion</option>
+            <option value="8">Position forcée</option>
           </select></div>
         <div class="kim-row"><label>Conditions de travail</label>
           <select id="kCond" onchange="calcKIM()">
-            <option value="1">Bonnes conditions</option>
-            <option value="1.1">Conditions moyennes</option>
-            <option value="1.25">Conditions défavorables</option>
+            <option value="0">Bonnes conditions</option>
+            <option value="1">Conditions moyennes</option>
+            <option value="2">Conditions défavorables</option>
           </select></div>
       </div>
       <div class="kim-result-box">
@@ -781,8 +816,12 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
             <option value="3">45–90°</option>
             <option value="4">> 90°</option>
           </select></div>
-        <div class="reba-row"><label>Épaule surélevée / abduction</label>
+        <div class="reba-row"><label>Épaule surélevée</label>
           <select id="rBrasMod" onchange="calcReba()">
+            <option value="0">Non</option><option value="1">Oui (+1)</option>
+          </select></div>
+        <div class="reba-row"><label>Bras en abduction</label>
+          <select id="rBrasAbd" onchange="calcReba()">
             <option value="0">Non</option><option value="1">Oui (+1)</option>
           </select></div>
       </div>
@@ -807,6 +846,16 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
           </select></div>
       </div>
       <div class="reba-section">
+        <div class="reba-title">Couplage (qualité de prise)</div>
+        <div class="reba-row"><label>Prise sur la charge</label>
+          <select id="rCouplage" onchange="calcReba()">
+            <option value="0">Bonne — poignée bien adaptée</option>
+            <option value="1">Passable — acceptable mais imparfaite (+1)</option>
+            <option value="2">Mauvaise — possible avec une autre partie du corps (+2)</option>
+            <option value="3">Inacceptable — aucune prise sûre (+3)</option>
+          </select></div>
+      </div>
+      <div class="reba-section">
         <div class="reba-title">Charge & Activité musculaire</div>
         <div class="reba-row"><label>Charge / force</label>
           <select id="rCharge" onchange="calcReba()">
@@ -815,12 +864,15 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
             <option value="2">> 10 kg (+2)</option>
             <option value="3">Choc / brusque (+3)</option>
           </select></div>
-        <div class="reba-row"><label>Activité (répétitif / statique)</label>
-          <select id="rActivite" onchange="calcReba()">
-            <option value="0">Occasionnel</option>
-            <option value="1">Répétitif > 4×/min (+1)</option>
-            <option value="1b">Statique > 1 min (+1)</option>
-          </select></div>
+        <div class="reba-row" style="align-items:flex-start"><label style="padding-top:2px">Activité musculaire</label>
+          <div style="display:flex;flex-direction:column;gap:4px;flex:1">
+            <label style="display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--dim);cursor:pointer">
+              <input type="checkbox" id="rActStatic" onchange="calcReba()" style="width:auto"> 1+ partie du corps statique > 1 min (+1)</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--dim);cursor:pointer">
+              <input type="checkbox" id="rActRepet" onchange="calcReba()" style="width:auto"> Répétition > 4×/min, hors marche (+1)</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--dim);cursor:pointer">
+              <input type="checkbox" id="rActRapide" onchange="calcReba()" style="width:auto"> Changement postural rapide/instable (+1)</label>
+          </div></div>
       </div>
       <div class="reba-score-box">
         <div class="reba-score-val" id="rebaScore">—</div>
@@ -868,8 +920,20 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
     </div>
   </div>
   <div class="card">
-    <div class="card-head"><span class="card-icon">📋</span><span class="card-title">Actions en cours</span><span class="card-badge" id="acCount">0</span></div>
+    <div class="card-head"><span class="card-icon">📋</span><span class="card-title">Actions en cours</span><span class="card-badge" id="acCount">0</span><button class="btn btn-ghost btn-card-action" onclick="exportActionsCSV()">📥 Export CSV</button></div>
     <div class="card-body" style="padding:12px">
+      <div class="row3" style="margin-bottom:10px">
+        <div class="field" style="margin:0"><input id="acSearch" placeholder="🔎 Filtrer par poste/titre…" oninput="renderActions()"></div>
+        <div class="field" style="margin:0"><select id="acFilterPrio" onchange="renderActions()">
+          <option value="">Toutes priorités</option>
+          <option value="1">🔴 P1</option><option value="2">🟠 P2</option><option value="3">🟢 P3</option>
+        </select></div>
+        <div class="field" style="margin:0"><select id="acFilterStatus" onchange="renderActions()">
+          <option value="">Tous statuts</option>
+          <option value="pending">⏳ En cours</option>
+          <option value="done">✅ Fait</option>
+        </select></div>
+      </div>
       <div class="action-list" id="actionList">
         <div class="action-empty">Aucune action pour le moment. Les recommandations de l'analyse seront ajoutées automatiquement.</div>
       </div>
@@ -886,6 +950,12 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
   <h2>🗂 Historique des analyses</h2>
   <p>Toutes les analyses terminées depuis le lancement de la session</p>
 </div>
+<div class="kpi-strip" id="histStats">
+  <div class="kpi"><div class="kpi-val" id="hsTotal">0</div><div class="kpi-key">Postes évalués</div></div>
+  <div class="kpi"><div class="kpi-val g" id="hsOk">0%</div><div class="kpi-key">Conformes</div></div>
+  <div class="kpi"><div class="kpi-val o" id="hsWarn">0%</div><div class="kpi-key">Alertes</div></div>
+  <div class="kpi"><div class="kpi-val r" id="hsDanger">0%</div><div class="kpi-key">Surcharges</div></div>
+</div>
 <div class="g2">
   <div class="card" style="grid-column:1/-1">
     <div class="card-head"><span class="card-icon">📊</span><span class="card-title">Comparatif multi-postes</span></div>
@@ -894,8 +964,17 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 </div>
 <div style="margin-top:16px">
   <div class="card">
-    <div class="card-head"><span class="card-icon">🗂</span><span class="card-title">Sessions enregistrées</span><span class="card-badge" id="histCount">0</span></div>
+    <div class="card-head"><span class="card-icon">🗂</span><span class="card-title">Sessions enregistrées</span><span class="card-badge" id="histCount">0</span><button class="btn btn-ghost btn-card-action" onclick="exportHistoriqueCSV()">📥 Export CSV</button></div>
     <div class="card-body" style="padding:12px">
+      <div class="row2" style="margin-bottom:10px">
+        <div class="field" style="margin:0"><input id="histSearch" placeholder="🔎 Filtrer par nom de poste…" oninput="renderHistorique()"></div>
+        <div class="field" style="margin:0"><select id="histFilterVerdict" onchange="renderHistorique()">
+          <option value="">Tous les verdicts</option>
+          <option value="ok">✅ Conforme</option>
+          <option value="warn">⚠️ Alerte</option>
+          <option value="danger">🚨 Surcharge</option>
+        </select></div>
+      </div>
       <div class="hist-list" id="histList"><div class="action-empty">Aucune analyse terminée.</div></div>
     </div>
   </div>
@@ -916,7 +995,42 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal()">Fermer</button>
       <button class="btn btn-blue" onclick="window.print()">🖨 Imprimer / PDF</button>
-      <button class="btn btn-green" onclick="exportCSV()">📥 Export CSV</button>
+      <button class="btn btn-green" onclick="exportRapportCSV(window.lastRapport.ana,window.lastRapport.rows)">📥 Rapport (CSV)</button>
+      <button class="btn btn-ghost" onclick="exportCSV()">📥 Journal levages (CSV)</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="privacyOverlay">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-head">
+      <div><div class="modal-title">🔒 Confidentialité des données</div></div>
+      <button class="modal-close" onclick="closePrivacyModal()" aria-label="Fermer">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="msec">
+        <div class="msec-title">Où vont vos données ?</div>
+        <div style="font-size:.85rem;color:var(--dim);line-height:1.6">
+          ErgoTrack PRO est une application <strong style="color:var(--text)">100% locale</strong> : aucune donnée (poste, opérateur, âge, genre, notes, levages, plan d'action, historique) n'est envoyée à un serveur. Tout est stocké uniquement dans le navigateur de cet appareil (<code>localStorage</code>), et n'est jamais partagé avec un tiers ni avec l'éditeur du logiciel.
+        </div>
+      </div>
+      <div class="msec">
+        <div class="msec-title">Ce que ça implique</div>
+        <div style="font-size:.85rem;color:var(--dim);line-height:1.6">
+          • Les données ne sont visibles que sur cet appareil et ce navigateur — pas de synchronisation entre postes ou collègues.<br>
+          • Vider le cache du navigateur ou changer d'appareil efface définitivement l'historique.<br>
+          • Utilisez le bouton <strong style="color:var(--text)">📥 CSV</strong> pour exporter et conserver une copie, et <strong style="color:var(--text)">🗑 Reset</strong> pour tout effacer manuellement.
+        </div>
+      </div>
+      <div class="msec">
+        <div class="msec-title">Recommandation</div>
+        <div style="font-size:.85rem;color:var(--dim);line-height:1.6">
+          Le nom de l'opérateur et son âge/genre sont des données personnelles. Pour un usage conforme (RGPD), préférez un identifiant anonymisé si possible, informez les opérateurs de la finalité (évaluation ergonomique SST) et supprimez les exports CSV une fois exploités.
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closePrivacyModal()">Fermer</button>
     </div>
   </div>
 </div>
@@ -1250,20 +1364,22 @@ function calcMAC(){
 // KIM
 // ═══════════════════════════════════════════════════════
 function calcKIM(){
+  const genre=document.getElementById('kGenre').value;
   const poids=parseFloat(document.getElementById('kPoids').value)||15;
-  const freq=parseFloat(document.getElementById('kFreq').value)||1;
   const duree=parseFloat(document.getElementById('kDuree').value)||2;
   const posture=parseFloat(document.getElementById('kPosture').value)||1;
-  const cond=parseFloat(document.getElementById('kCond').value)||1;
-  // Indice de charge par poids (simplifié KIM)
-  let ip=1;
-  if(poids<=5)ip=1; else if(poids<=10)ip=2; else if(poids<=15)ip=3;
-  else if(poids<=20)ip=4; else if(poids<=25)ip=6; else if(poids<=35)ip=8; else ip=10;
-  // Fréquence score
-  let sf=1;
-  if(freq<=0.2)sf=0.5; else if(freq<=0.5)sf=0.75; else if(freq<=1)sf=1;
-  else if(freq<=2)sf=1.5; else if(freq<=4)sf=2; else if(freq<=8)sf=3; else sf=4;
-  const score=ip*sf*duree*posture*cond;
+  const cond=parseFloat(document.getElementById('kCond').value)||0;
+  // Score de poids (échelle simplifiée, seuils réduits pour les femmes — cf. seuils H/F déjà utilisés ailleurs dans l'app)
+  const seuils=genre==='F'?[5,10,15,20,25]:[10,20,30,40,50];
+  let ipoids=2;
+  if(poids<=seuils[0])ipoids=2; else if(poids<=seuils[1])ipoids=4; else if(poids<=seuils[2])ipoids=6;
+  else if(poids<=seuils[3])ipoids=8; else if(poids<=seuils[4])ipoids=10; else ipoids=12;
+  // Score temps (durée totale d'exposition/jour, échelle progressive)
+  let itemps=1;
+  if(duree<=0.5)itemps=1; else if(duree<=1)itemps=2; else if(duree<=2)itemps=3;
+  else if(duree<=4)itemps=4; else if(duree<=6)itemps=6; else if(duree<=8)itemps=8; else itemps=10;
+  // Structure officielle KIM-LHC (BAuA) : Score = Temps × (Poids + Posture + Conditions)
+  const score=itemps*(ipoids+posture+cond);
   document.getElementById('kimScore').textContent=score.toFixed(0);
   let risk,color;
   if(score<10){risk='Risque faible';color='var(--green)'}
@@ -1278,10 +1394,37 @@ function calcKIM(){
 // ═══════════════════════════════════════════════════════
 // REBA
 // ═══════════════════════════════════════════════════════
-// Table A REBA simplifiée [cou][jambe][tronc] → score partiel
-const REBA_A=[[1,2,3,4],[1,2,3,4],[3,3,5,6],[4,5,6,7],[2,3,4,5],[2,3,4,5],[4,4,5,6],[5,5,6,8]];
-const REBA_B=[[1,2,2,3],[2,3,3,4],[2,3,3,4],[3,4,4,5],[3,4,4,5],[4,5,5,6],[5,6,6,7],[5,6,6,7]];
-const REBA_C=[[1,1,1,2,3,3,4,5,6,7,7,7],[1,2,2,3,4,4,5,6,6,7,7,8],[2,3,3,3,4,5,6,7,7,8,8,8],[3,4,4,4,5,6,7,8,8,9,9,9],[4,4,4,5,6,7,8,8,9,9,9,9],[6,6,6,7,8,8,9,9,10,10,10,10],[7,7,7,8,9,9,9,10,10,11,11,11],[8,8,8,9,10,10,10,10,11,11,11,11],[9,9,9,10,10,10,11,11,12,12,12,12]];
+// Tables officielles REBA (Hignett & McAtamney, 2000).
+// Table A : [Cou 1-3][Tronc 1-5][Jambes 1-4] (torsion/flexion genoux déjà intégrées dans les totaux d'axe)
+const REBA_TABLE_A=[
+  [[1,2,3,4],[2,3,4,5],[2,4,5,6],[3,5,6,7],[4,6,7,8]],
+  [[1,2,3,4],[3,4,5,6],[4,5,6,7],[5,6,7,8],[6,7,8,9]],
+  [[3,3,5,6],[4,5,6,7],[5,6,7,8],[6,7,8,9],[7,8,9,9]]
+];
+// Table B : [Bras 1-6][Avant-bras 1-2][Poignet 1-3]
+const REBA_TABLE_B=[
+  [[1,2,2],[1,2,3]],
+  [[1,2,3],[2,3,4]],
+  [[3,4,5],[4,5,5]],
+  [[4,5,5],[5,6,7]],
+  [[6,7,8],[7,8,8]],
+  [[7,8,8],[8,9,9]]
+];
+// Table C : [Score A 1-12][Score B 1-12]
+const REBA_TABLE_C=[
+  [1,1,1,2,3,3,4,5,6,7,7,7],
+  [1,2,2,3,4,4,5,6,6,7,7,8],
+  [2,3,3,3,4,5,6,7,7,8,8,8],
+  [3,4,4,4,5,6,7,8,8,9,9,9],
+  [4,4,4,5,6,7,8,8,9,9,9,9],
+  [6,6,6,7,8,8,9,9,10,10,10,10],
+  [7,7,7,8,9,9,9,10,10,11,11,11],
+  [8,8,8,9,10,10,10,10,11,11,11,11],
+  [9,9,9,10,10,10,11,11,12,12,12,12],
+  [10,10,10,11,11,11,11,12,12,12,12,12],
+  [11,11,11,11,12,12,12,12,12,12,12,12],
+  [12,12,12,12,12,12,12,12,12,12,12,12]
+];
 function calcReba(){
   const tronc=parseInt(document.getElementById('rTronc').value)||1;
   const troncTw=parseInt(document.getElementById('rTroncTw').value)||0;
@@ -1291,17 +1434,26 @@ function calcReba(){
   const genoux=parseInt(document.getElementById('rGenoux').value)||0;
   const bras=parseInt(document.getElementById('rBras').value)||1;
   const brasMod=parseInt(document.getElementById('rBrasMod').value)||0;
+  const brasAbd=parseInt(document.getElementById('rBrasAbd').value)||0;
   const avantBras=parseInt(document.getElementById('rAvantBras').value)||1;
   const poignet=parseInt(document.getElementById('rPoignet').value)||1;
   const poignetTw=parseInt(document.getElementById('rPoignetTw').value)||0;
   const charge=parseInt(document.getElementById('rCharge').value)||0;
-  const actVal=document.getElementById('rActivite').value;
-  const activite=(actVal==='0')?0:1;
-  const scoreA=tronc+troncTw+cou+couTw+jambes+genoux;
-  const scoreB=bras+brasMod+avantBras+poignet+poignetTw;
-  const scoreC=Math.min(scoreA+charge,12);
-  const scoreD=Math.min(scoreB+charge,12);
-  const rebaRaw=Math.min(scoreC+scoreD+activite,15);
+  const couplage=parseInt(document.getElementById('rCouplage')?.value)||0;
+  const activite=(document.getElementById('rActStatic').checked?1:0)+(document.getElementById('rActRepet').checked?1:0)+(document.getElementById('rActRapide').checked?1:0);
+  // Totaux d'axe : la torsion / le modificateur est déjà intégré dans le score qui entre dans la table,
+  // exactement comme sur la fiche REBA papier officielle.
+  const troncTotal=Math.min(tronc+troncTw,5);
+  const couTotal=Math.min(cou+couTw,3);
+  const jambesTotal=Math.min(jambes+genoux,4);
+  const brasTotal=Math.min(bras+brasMod+brasAbd,6);
+  const poignetTotal=Math.min(poignet+poignetTw,3);
+  const tableAScore=REBA_TABLE_A[couTotal-1][troncTotal-1][jambesTotal-1];
+  const tableBScore=REBA_TABLE_B[brasTotal-1][avantBras-1][poignetTotal-1];
+  const scoreA=Math.min(tableAScore+charge,12);
+  const scoreB=Math.min(tableBScore+couplage,12);
+  const scoreC=REBA_TABLE_C[scoreA-1][scoreB-1];
+  const rebaRaw=Math.min(scoreC+activite,15);
   document.getElementById('rebaScore').textContent=rebaRaw;
   let action,color;
   if(rebaRaw<=1){action='Risque négligeable — aucune action requise';color='var(--green)'}
@@ -1337,8 +1489,17 @@ function addAction(auto){
 function renderActions(){
   const list=document.getElementById('actionList');
   document.getElementById('acCount').textContent=S.actions.length;
+  const search=(document.getElementById('acSearch')?.value||'').toLowerCase().trim();
+  const prioFilter=document.getElementById('acFilterPrio')?.value||'';
+  const statusFilter=document.getElementById('acFilterStatus')?.value||'';
+  const filtered=S.actions.filter(a=>
+    (!search||a.title.toLowerCase().includes(search)||(a.poste||'').toLowerCase().includes(search))&&
+    (!prioFilter||String(a.prio)===prioFilter)&&
+    (!statusFilter||(statusFilter==='done'?a.done:!a.done))
+  );
   if(S.actions.length===0){list.innerHTML='<div class="action-empty">Aucune action pour le moment.</div>';return}
-  list.innerHTML=S.actions.map(a=>`
+  if(filtered.length===0){list.innerHTML='<div class="action-empty">Aucun résultat pour ce filtre.</div>';return}
+  list.innerHTML=filtered.map(a=>`
     <div class="action-item ${a.done?'done':''}">
       <div class="action-prio prio-${a.prio}">${a.prio}</div>
       <div class="action-content">
@@ -1412,6 +1573,16 @@ function lancerAnalyse(){
   const ana={id:Date.now(),poste,operateur,masse,sa,pct,verdict:verdict.cls,date:dateStr,n,rythme};
   S.analyses.push(ana);
   renderHistorique(); saveState();
+  window.lastRapport={ana,rows:[
+    ['Identification','Poste',poste],['Identification','Opérateur',operateur],['Identification','Entité / Site',entite],
+    ['Identification','Genre',genre==='F'?'Femme':'Homme'],['Identification','Âge',age],['Identification','Session',S.sessionId],['Identification','Date',dateStr],
+    ['Métriques','Durée du poste saisi (h)',dureeH],['Métriques','Durée observée (s)',secsTotal],['Métriques','Poids unitaire (kg)',poids],
+    ['Métriques','Nombre de levages',n],['Métriques','Cadence (lev/min)',rythme],['Métriques','Distance transport (m)',dist],['Métriques','Tonnage total (kg)',masse.toFixed(1)],
+    ['Réglementaire','Seuil journalier (kg)',sb],['Réglementaire','Seuil ajusté (kg)',sa.toFixed(0)],['Réglementaire','Charge relative (%)',Math.round(pct)],
+    ['Réglementaire','Pénalité posturale (%)',penPct],['Verdict','Statut',verdict.label],['Verdict','Détail',verdict.desc],
+    ...(notes?[['Notes','Notes terrain',notes]]:[]),
+    ...recos.map(r=>['Recommandation',r.title,r.desc])
+  ]};
   document.getElementById('modalSub').textContent=poste+' — '+dateStr;
   document.getElementById('modalBody').innerHTML=`
     <div class="msec"><div class="msec-title">📌 Identification</div>
@@ -1475,9 +1646,22 @@ function genRecos(poids,masse,sa,penPct,rythme,dist,genre){
 let chartCompar=null;
 function renderHistorique(){
   document.getElementById('histCount').textContent=S.analyses.length;
+  const total=S.analyses.length;
+  const pct=cls=>total?Math.round(S.analyses.filter(a=>a.verdict===cls).length/total*100):0;
+  document.getElementById('hsTotal').textContent=total;
+  document.getElementById('hsOk').textContent=pct('ok')+'%';
+  document.getElementById('hsWarn').textContent=pct('warn')+'%';
+  document.getElementById('hsDanger').textContent=pct('danger')+'%';
   const list=document.getElementById('histList');
-  if(S.analyses.length===0){list.innerHTML='<div class="action-empty">Aucune analyse terminée.</div>';return}
-  list.innerHTML=[...S.analyses].reverse().map(a=>`
+  const searchEl=document.getElementById('histSearch');
+  const search=(searchEl?searchEl.value:'').toLowerCase().trim();
+  const verdictFilter=document.getElementById('histFilterVerdict')?.value||'';
+  const filtered=[...S.analyses].reverse().filter(a=>
+    (!search||a.poste.toLowerCase().includes(search))&&(!verdictFilter||a.verdict===verdictFilter)
+  );
+  if(S.analyses.length===0){list.innerHTML='<div class="action-empty">Aucune analyse terminée.</div>';}
+  else if(filtered.length===0){list.innerHTML='<div class="action-empty">Aucun résultat pour ce filtre.</div>';}
+  else list.innerHTML=filtered.map(a=>`
     <div class="hist-item">
       <div><div class="hist-name">${a.poste}</div>
         <div class="hist-meta">${a.date} — ${a.n} levages — ${a.masse.toFixed(1)} kg / ${a.sa.toFixed(0)} kg max</div></div>
@@ -1550,26 +1734,24 @@ function reinitialiserTout(){
 // PERSISTANCE (localStorage)
 // ═══════════════════════════════════════════════════════
 const STORAGE_KEY='ergotrak_pro_state_v1';
-let saveTimer=null;
 function fval(id){const el=document.getElementById(id);return el?el.value:''}
 function setFval(id,v){if(v===undefined||v===null)return;const el=document.getElementById(id);if(el)el.value=v}
+// Écriture synchrone et immédiate (pas de debounce) : sur un outil de terrain, un rechargement
+// ou une fermeture d'onglet juste après une action ne doit jamais perdre de données.
 function saveState(){
-  clearTimeout(saveTimer);
-  saveTimer=setTimeout(()=>{
-    const data={
-      sessionId:S.sessionId, elapsed:S.elapsed,
-      levages:S.levages, actions:S.actions, analyses:S.analyses,
-      form:{
-        poste:fval('poste'),operateur:fval('operateur'),entite:fval('entite'),
-        genre:fval('genre'),age:fval('age'),poids:fval('poids'),
-        distTransport:fval('distTransport'),dureePoste:fval('dureePoste'),
-        typePrise:fval('typePrise'),notes:fval('notes'),
-        postures:[0,1,2,3,4].map(i=>document.getElementById('chk'+i).checked)
-      },
-      savedAt:Date.now()
-    };
-    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}catch(e){}
-  },250);
+  const data={
+    sessionId:S.sessionId, elapsed:S.elapsed,
+    levages:S.levages, actions:S.actions, analyses:S.analyses,
+    form:{
+      poste:fval('poste'),operateur:fval('operateur'),entite:fval('entite'),
+      genre:fval('genre'),age:fval('age'),poids:fval('poids'),
+      distTransport:fval('distTransport'),dureePoste:fval('dureePoste'),
+      typePrise:fval('typePrise'),notes:fval('notes'),
+      postures:[0,1,2,3,4].map(i=>document.getElementById('chk'+i).checked)
+    },
+    savedAt:Date.now()
+  };
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}catch(e){}
 }
 function restoreState(){
   let data;
@@ -1617,7 +1799,7 @@ document.getElementById('page-obs').addEventListener('change',()=>saveState());
 // RACCOURCIS CLAVIER
 // ═══════════════════════════════════════════════════════
 document.addEventListener('keydown',(e)=>{
-  if(e.key==='Escape'){closeModal();closeMobileMenu();return}
+  if(e.key==='Escape'){closeModal();closePrivacyModal();closeMobileMenu();return}
   const tag=(document.activeElement.tagName||'').toLowerCase();
   if(tag==='input'||tag==='textarea'||tag==='select')return;
   const obsActive=document.getElementById('page-obs').classList.contains('active');
@@ -1629,11 +1811,24 @@ document.addEventListener('keydown',(e)=>{
 // UTILS
 // ═══════════════════════════════════════════════════════
 function closeModal(){document.getElementById('modalOverlay').classList.remove('open')}
+function openPrivacyModal(){document.getElementById('privacyOverlay').classList.add('open')}
+function closePrivacyModal(){document.getElementById('privacyOverlay').classList.remove('open')}
+document.getElementById('privacyOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closePrivacyModal()});
 document.getElementById('modalOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal()});
 function showToast(msg,dur=2200){
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),dur);
+}
+function downloadCSV(filename,rows){
+  const csv='﻿'+rows.map(r=>r.map(c=>{
+    const s=String(c==null?'':c);
+    return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+  }).join(';')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download=filename;
+  a.click();
 }
 function exportCSV(){
   if(S.levages.length===0){showToast('⚠ Aucune donnée');return}
@@ -1644,11 +1839,28 @@ function exportCSV(){
     cumul+=l.poids;
     rows.push([i+1,l.tSec,l.poids,cumul.toFixed(1),l.rythme||'—',l.dist||0]);
   });
-  const csv=rows.map(r=>r.join(';')).join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download='ErgoTrackPRO_'+S.sessionId+'_'+poste.replace(/\s/g,'_')+'.csv';
-  a.click(); showToast('📥 Export CSV téléchargé');
+  downloadCSV('ErgoTrackPRO_'+S.sessionId+'_'+poste.replace(/\s/g,'_')+'.csv',rows);
+  showToast('📥 Export CSV téléchargé');
+}
+function exportActionsCSV(){
+  if(S.actions.length===0){showToast('⚠ Aucune action à exporter');return}
+  const rows=[['Priorité','Titre','Poste','Responsable','Échéance','Catégorie ERIC-P','Statut','Description']];
+  S.actions.forEach(a=>rows.push(['P'+a.prio,a.title,a.poste||'',a.resp||'',a.date||'',a.cat,a.done?'Fait':'En cours',a.desc||'']));
+  downloadCSV('ErgoTrackPRO_PlanAction_'+S.sessionId+'.csv',rows);
+  showToast('📥 Plan d\'action exporté');
+}
+function exportHistoriqueCSV(){
+  if(S.analyses.length===0){showToast('⚠ Aucune analyse à exporter');return}
+  const rows=[['Poste','Opérateur','Date','Levages','Tonnage(kg)','Seuil ajusté(kg)','Charge relative(%)','Verdict']];
+  S.analyses.forEach(a=>rows.push([a.poste,a.operateur||'',a.date,a.n,a.masse.toFixed(1),a.sa.toFixed(0),Math.round(a.pct),a.verdict]));
+  downloadCSV('ErgoTrackPRO_Historique_'+S.sessionId+'.csv',rows);
+  showToast('📥 Historique exporté');
+}
+function exportRapportCSV(ana,detailRows){
+  const rows=[['Section','Champ','Valeur']];
+  detailRows.forEach(r=>rows.push(r));
+  downloadCSV('ErgoTrackPRO_Rapport_'+ana.poste.replace(/\s/g,'_')+'_'+S.sessionId+'.csv',rows);
+  showToast('📥 Rapport exporté en CSV');
 }
 
 // Init
@@ -2151,6 +2363,13 @@ function resetPhotoGuide(){
 
 // Restauration de la session précédente (après chargement complet des modules)
 restoreState();
+
+// PWA : service worker pour un vrai usage hors-ligne après premier chargement
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  });
+}
 </script>
 </body>
 </html>

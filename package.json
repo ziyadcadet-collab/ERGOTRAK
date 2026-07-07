@@ -1,0 +1,12 @@
+{
+  "name": "ergotrack-pro",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Outil SST de terrain pour l'évaluation des risques liés à la manutention manuelle.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  }
+}

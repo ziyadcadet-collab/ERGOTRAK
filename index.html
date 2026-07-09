@@ -103,6 +103,13 @@ textarea{resize:vertical;min-height:70px}
 .timer-dig.done{color:var(--cyan)}
 .timer-lbl{font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--faint)}
 
+/* PRÉRÉGLAGES DE POIDS */
+.weight-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.weight-chip{flex:1;min-width:48px;padding:9px 4px;border:1px solid var(--border);background:var(--s2);border-radius:7px;color:var(--dim);font-family:var(--mono);font-size:.83rem;font-weight:600;cursor:pointer;text-align:center;transition:all .15s}
+.weight-chip:hover{border-color:var(--border2);color:var(--text)}
+.weight-chip:active{transform:scale(.95)}
+.weight-chip:disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
+
 /* LEVAGE BTN */
 .levage-btn{background:linear-gradient(135deg,#1a7aff,#0058cc);color:#fff;border:none;border-radius:11px;font-family:var(--sans);font-size:1.1rem;font-weight:800;cursor:pointer;padding:20px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s;box-shadow:0 4px 24px rgba(26,122,255,.3);letter-spacing:.3px;position:relative;overflow:hidden}
 .levage-btn:before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.1),transparent);opacity:0;transition:opacity .2s}
@@ -470,7 +477,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
         </div>
         <div class="row4">
           <div class="field"><label class="lbl">Âge</label><input id="age" type="number" min="16" max="70" placeholder="35"></div>
-          <div class="field"><label class="lbl">Poids charge (kg)<span>*</span></label><input id="poids" type="number" min="0.1" step="0.1" placeholder="23"></div>
+          <div class="field"><label class="lbl">Poids initial (kg)<span>*</span></label><input id="poids" type="number" min="0.1" step="0.1" placeholder="23"></div>
           <div class="field"><label class="lbl">Distance transport (m)</label><input id="distTransport" type="number" min="0" step="0.5" placeholder="2"></div>
           <div class="field"><label class="lbl">Durée poste</label>
             <select id="dureePoste"><option value="2">2 h</option><option value="4">4 h</option><option value="6">6 h</option><option value="7" selected>7 h</option><option value="8">8 h</option></select></div>
@@ -577,8 +584,13 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
     <div class="card">
       <div class="card-head"><span class="card-icon">📦</span><span class="card-title">Saisie des levages en temps réel</span></div>
       <div class="card-body">
-        <button class="levage-btn" id="btnLevage" onclick="enrLevage()" disabled>📦 ENREGISTRER UN LEVAGE</button>
-        <div class="levage-hint">Appuyer à chaque prise de charge observée sur le terrain · raccourci clavier <strong>[Espace]</strong></div>
+        <div class="field" style="margin-bottom:10px">
+          <label class="lbl">Poids de ce levage (kg)</label>
+          <input id="poidsCourant" type="number" min="0.1" step="0.5" placeholder="23" oninput="updateLevageBtnLabel()">
+        </div>
+        <div class="weight-chips" id="poidsPresets"></div>
+        <button class="levage-btn" id="btnLevage" onclick="enrLevage()" disabled>📦 ENREGISTRER — <span id="btnLevagePoidsLbl">— KG</span></button>
+        <div class="levage-hint">Les bagages ne pèsent pas tous 23 kg : ajustez le poids ci-dessus (ou tapez un préréglage) avant chaque levage · raccourci clavier <strong>[Espace]</strong></div>
         <button class="btn btn-ghost btn-full" style="margin-top:8px;font-size:.78rem" onclick="undoLastLevage()">↩ Annuler le dernier levage</button>
         <div class="pbar-wrap" style="margin-top:10px">
           <div class="pbar-row"><span>Tonnage vs seuil ajusté</span><span id="pbPct">0%</span></div>
@@ -607,9 +619,10 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
     </div>
 
     <!-- Bouton analyse -->
-    <button class="btn btn-red btn-xl" onclick="lancerAnalyse()">
+    <button class="btn btn-red btn-xl" id="btnAnalyse" onclick="lancerAnalyse()">
       📊 GÉNÉRER L'ANALYSE COMPLÈTE
     </button>
+    <div class="levage-hint" id="btnAnalyseHint" style="display:none;text-align:center;margin-top:6px">Analyse déjà générée pour cette observation — enregistrez un nouveau levage ou démarrez une nouvelle observation pour la régénérer.</div>
 
   </div><!-- /gcol-right -->
 </div>
@@ -662,6 +675,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
         </div>
         <div class="field"><label class="lbl">Poids réel de la charge (kg)</label>
           <input id="nPoids" type="number" min="1" step="0.5" value="23" oninput="calcNiosh()"></div>
+        <button class="btn btn-ghost btn-full" style="font-size:.78rem" onclick="useMaxPoidsObserve()">📥 Reprendre le levage le plus lourd observé</button>
       </div>
     </div>
   </div>
@@ -723,7 +737,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
       <div class="kim-section">
         <div class="kim-section-title">Conditions de levage</div>
         <div class="kim-row"><label>Genre de l'opérateur</label>
-          <select id="kGenre" onchange="calcKIM()"><option value="H">Homme</option><option value="F">Femme</option></select></div>
+          <div style="flex:1;padding:9px 2px;color:var(--dim);font-size:.88rem" id="kGenreDisplay">— <span style="color:var(--faint)">(repris de la page Observation)</span></div></div>
         <div class="kim-row"><label>Poids de la charge (kg)</label><input id="kPoids" type="number" value="15" min="1" step="0.5" oninput="calcKIM()"></div>
         <div class="kim-row"><label>Durée totale (h)</label><input id="kDuree" type="number" value="2" min="0.25" step="0.25" oninput="calcKIM()"></div>
         <div class="kim-row"><label>Posture de travail</label>
@@ -1042,7 +1056,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 // STATE
 // ═══════════════════════════════════════════════════════
 const S = {
-  running:false, startTime:0, elapsed:0, interval:null,
+  running:false, stopped:false, analyzed:false, startTime:0, elapsed:0, interval:null,
   levages:[], analyses:[], actions:[],
   sessionId:'SGT-'+Date.now().toString(36).toUpperCase()
 };
@@ -1060,7 +1074,7 @@ function goPage(id) {
   document.getElementById('page-'+id).classList.add('active');
   event.currentTarget.classList.add('active');
   if(id==='niosh') calcNiosh();
-  if(id==='mac') initMAC();
+  if(id==='mac'){initMAC();calcKIM();}
   if(id==='reba') calcReba();
   closeMobileMenu();
 }
@@ -1095,6 +1109,12 @@ function toggleTimer() {
   if(!S.running && !poste){markError('poste');showToast('⚠ Renseignez le poste de travail');return}
   if(!p||p<=0){markError('poids');showToast('⚠ Saisissez le poids de la charge');return}
   if(!S.running) {
+    if(S.stopped && !confirm('Cette observation a été marquée comme terminée. Voulez-vous vraiment la reprendre ?'))return;
+    S.stopped=false;
+    if(S.elapsed===0 && S.levages.length===0){
+      document.getElementById('poidsCourant').value=p;
+      updateLevageBtnLabel();
+    }
     S.running=true; S.startTime=Date.now()-S.elapsed;
     S.interval=setInterval(tick,100);
     document.getElementById('btnStart').textContent='⏸ Pause';
@@ -1102,7 +1122,7 @@ function toggleTimer() {
     document.getElementById('btnStop').disabled=false;
     document.getElementById('timerDig').className='timer-dig run';
     document.getElementById('timerLbl').textContent='OBSERVATION EN COURS';
-    document.getElementById('btnLevage').disabled=false;
+    setLevageControlsEnabled(true);
     document.getElementById('poids').disabled=true;
     setAlert('ok','🟢 Observation active — enregistrez chaque levage observé');
   } else {
@@ -1111,17 +1131,19 @@ function toggleTimer() {
     document.getElementById('btnStart').className='btn btn-green btn-lg btn-full';
     document.getElementById('timerDig').className='timer-dig pause';
     document.getElementById('timerLbl').textContent='EN PAUSE';
-    document.getElementById('btnLevage').disabled=true;
+    setLevageControlsEnabled(false);
     setAlert('warn','⏸ Observation en pause');
   }
 }
 function stopTimer() {
   if(S.running){S.running=false;clearInterval(S.interval);S.elapsed=Date.now()-S.startTime}
+  S.stopped=true;
   document.getElementById('btnStart').textContent='▶ Reprendre';
   document.getElementById('btnStart').className='btn btn-green btn-lg btn-full';
   document.getElementById('timerDig').className='timer-dig done';
   document.getElementById('timerLbl').textContent='TERMINÉ';
-  document.getElementById('btnLevage').disabled=true;
+  setLevageControlsEnabled(false);
+  saveState();
 }
 function tick() {
   S.elapsed=Date.now()-S.startTime;
@@ -1178,8 +1200,31 @@ function updatePenBar(){
 // ═══════════════════════════════════════════════════════
 // LEVAGE
 // ═══════════════════════════════════════════════════════
+// Préréglages rapides : les charges observées n'ont pas toutes le même poids
+// (bagages légers, standards, en surpoids…) — on log au poids réel de CE levage.
+const POIDS_PRESETS=[10,15,20,23,27,32];
+function renderWeightPresets(){
+  const wrap=document.getElementById('poidsPresets');
+  if(!wrap||wrap.children.length>0)return;
+  wrap.innerHTML=POIDS_PRESETS.map(kg=>`<button type="button" class="weight-chip" onclick="quickLevage(${kg})" disabled>${kg}</button>`).join('');
+}
+function setLevageControlsEnabled(enabled){
+  document.getElementById('btnLevage').disabled=!enabled;
+  document.querySelectorAll('.weight-chip').forEach(c=>c.disabled=!enabled);
+}
+function updateLevageBtnLabel(){
+  const v=parseFloat(document.getElementById('poidsCourant').value);
+  document.getElementById('btnLevagePoidsLbl').textContent=(v>0?v:'—')+' KG';
+}
+function quickLevage(kg){
+  document.getElementById('poidsCourant').value=kg;
+  updateLevageBtnLabel();
+  enrLevage();
+}
 function enrLevage(){
-  const poids=parseFloat(document.getElementById('poids').value);
+  if(!S.running){showToast('⚠ Démarrez ou reprenez l\'observation avant d\'enregistrer un levage');return}
+  const poids=parseFloat(document.getElementById('poidsCourant').value);
+  if(!poids||poids<=0){markError('poidsCourant');showToast('⚠ Saisissez le poids de ce levage');return}
   const dist=parseFloat(document.getElementById('distTransport').value)||0;
   const now=Date.now();
   const tSec=Math.floor(S.elapsed/1000);
@@ -1188,7 +1233,10 @@ function enrLevage(){
   const rythme=interval?(60/interval).toFixed(1):null;
   S.levages.push({ts:now,tSec,poids,dist,rythme});
   updateKPIs(); addLogRow(S.levages.length,tSec,poids,getTotalMasse(),rythme);
-  updateGauge(); updateChart(); saveState();
+  updateGauge(); updateChart();
+  S.analyzed=false; saveState();
+  document.getElementById('btnAnalyse').disabled=false;
+  document.getElementById('btnAnalyseHint').style.display='none';
   const btn=document.getElementById('btnLevage');
   btn.style.transform='scale(.95)'; setTimeout(()=>btn.style.transform='',120);
   showToast('+'+poids+' kg enregistré');
@@ -1319,6 +1367,14 @@ function calcNiosh(){
   else{ilBadge.className='li-badge li-danger'}
   document.getElementById('nioshCoeffs').innerHTML=coeffs.map(c=>`<div class="coeff-item"><span>${c.n}</span><strong>${c.v.toFixed(3)}</strong></div>`).join('');
 }
+function useMaxPoidsObserve(){
+  const poidsList=S.levages.map(l=>l.poids).filter(p=>!isNaN(p)&&p>0);
+  if(poidsList.length===0){showToast('⚠ Aucun levage observé pour le moment');return}
+  const max=Math.max(...poidsList);
+  document.getElementById('nPoids').value=max;
+  calcNiosh();
+  showToast('📥 '+max+' kg (le plus lourd observé) appliqué');
+}
 
 // ═══════════════════════════════════════════════════════
 // MAC
@@ -1364,7 +1420,8 @@ function calcMAC(){
 // KIM
 // ═══════════════════════════════════════════════════════
 function calcKIM(){
-  const genre=document.getElementById('kGenre').value;
+  const genre=document.getElementById('genre').value;
+  document.getElementById('kGenreDisplay').innerHTML=(genre==='F'?'Femme':'Homme')+' <span style="color:var(--faint)">(repris de la page Observation)</span>';
   const poids=parseFloat(document.getElementById('kPoids').value)||15;
   const duree=parseFloat(document.getElementById('kDuree').value)||2;
   const posture=parseFloat(document.getElementById('kPosture').value)||1;
@@ -1533,13 +1590,22 @@ function deleteAction(id){
 // ANALYSE FINALE
 // ═══════════════════════════════════════════════════════
 function lancerAnalyse(){
+  if(S.analyzed){showToast('⚠ Analyse déjà générée — enregistrez un nouveau levage ou démarrez une nouvelle observation');return}
   const secsTotal=Math.floor(S.elapsed/1000);
   if(secsTotal<5){showToast('⚠ Temps d\'observation trop court');return}
   if(S.running)stopTimer();
   const poste=document.getElementById('poste').value||'Non spécifié';
   const operateur=document.getElementById('operateur').value||'Anonyme';
   const entite=document.getElementById('entite').value||'—';
-  const poids=parseFloat(document.getElementById('poids').value)||0;
+  const poidsInitial=parseFloat(document.getElementById('poids').value)||0;
+  const poidsList=S.levages.map(l=>l.poids).filter(p=>!isNaN(p)&&p>0);
+  const poidsMin=poidsList.length?Math.min(...poidsList):poidsInitial;
+  const poidsMax=poidsList.length?Math.max(...poidsList):poidsInitial;
+  const poidsAvg=poidsList.length?(poidsList.reduce((a,b)=>a+b,0)/poidsList.length):poidsInitial;
+  const poidsUniforme=poidsMin===poidsMax;
+  const poidsAff=poidsUniforme?`${poidsMax} kg`:`${poidsMin}–${poidsMax} kg (moyenne ${poidsAvg.toFixed(1)} kg)`;
+  const typePriseVal=document.getElementById('typePrise').value;
+  const typePriseLabel=document.getElementById('typePrise').selectedOptions[0].textContent;
   const genre=document.getElementById('genre').value;
   const age=document.getElementById('age').value||'—';
   const dist=parseFloat(document.getElementById('distTransport').value)||0;
@@ -1567,7 +1633,7 @@ function lancerAnalyse(){
   POSPEN.forEach((pen,i)=>{if(document.getElementById('chk'+i).checked)penHtml+=`<div class="rrow"><span>⚠ ${PNAMES[i]}</span><strong style="color:var(--orange)">−${Math.round(pen*100)}%</strong></div>`});
   if(!penHtml)penHtml=`<div class="rrow"><span>Aucun facteur aggravant</span><strong style="color:var(--green)">0%</strong></div>`;
   // Recos auto
-  const recos=genRecos(poids,masse,sa,penPct,parseFloat(rythme),dist,genre);
+  const recos=genRecos(poidsMax,masse,sa,penPct,parseFloat(rythme),dist,genre,typePriseVal,poidsUniforme);
   // Ajouter recos au plan d'action auto
   recos.forEach(r=>addAction({title:r.title,prio:r.prio,poste,cat:r.cat,desc:r.desc}));
   const ana={id:Date.now(),poste,operateur,masse,sa,pct,verdict:verdict.cls,date:dateStr,n,rythme};
@@ -1576,7 +1642,8 @@ function lancerAnalyse(){
   window.lastRapport={ana,rows:[
     ['Identification','Poste',poste],['Identification','Opérateur',operateur],['Identification','Entité / Site',entite],
     ['Identification','Genre',genre==='F'?'Femme':'Homme'],['Identification','Âge',age],['Identification','Session',S.sessionId],['Identification','Date',dateStr],
-    ['Métriques','Durée du poste saisi (h)',dureeH],['Métriques','Durée observée (s)',secsTotal],['Métriques','Poids unitaire (kg)',poids],
+    ['Métriques','Durée du poste saisi (h)',dureeH],['Métriques','Durée observée (s)',secsTotal],['Métriques','Poids des charges',poidsAff],
+    ['Métriques','Type de prise observé',typePriseLabel],
     ['Métriques','Nombre de levages',n],['Métriques','Cadence (lev/min)',rythme],['Métriques','Distance transport (m)',dist],['Métriques','Tonnage total (kg)',masse.toFixed(1)],
     ['Réglementaire','Seuil journalier (kg)',sb],['Réglementaire','Seuil ajusté (kg)',sa.toFixed(0)],['Réglementaire','Charge relative (%)',Math.round(pct)],
     ['Réglementaire','Pénalité posturale (%)',penPct],['Verdict','Statut',verdict.label],['Verdict','Détail',verdict.desc],
@@ -1596,7 +1663,8 @@ function lancerAnalyse(){
     <div class="msec"><div class="msec-title">📊 Métriques d'observation</div>
       <div class="rrow"><span>Durée du poste saisi</span><strong>${dureeH} h</strong></div>
       <div class="rrow"><span>Durée observée</span><strong>${mins} min ${secs} sec</strong></div>
-      <div class="rrow"><span>Poids unitaire de la charge</span><strong>${poids} kg</strong></div>
+      <div class="rrow"><span>Poids des charges observées</span><strong>${poidsAff}</strong></div>
+      <div class="rrow"><span>Type de prise observé</span><strong>${typePriseLabel}</strong></div>
       <div class="rrow"><span>Nombre de levages</span><strong>${n}</strong></div>
       <div class="rrow"><span>Cadence mesurée</span><strong>${rythme} lev/min</strong></div>
       <div class="rrow"><span>Distance de transport</span><strong>${dist} m / levage</strong></div>
@@ -1623,12 +1691,17 @@ function lancerAnalyse(){
     </div>
   `;
   document.getElementById('modalOverlay').classList.add('open');
+  S.analyzed=true; saveState();
+  document.getElementById('btnAnalyse').disabled=true;
+  document.getElementById('btnAnalyseHint').style.display='block';
   showToast('✅ Analyse générée — actions ajoutées au plan');
 }
-function genRecos(poids,masse,sa,penPct,rythme,dist,genre){
+function genRecos(poidsMax,masse,sa,penPct,rythme,dist,genre,typePriseVal,poidsUniforme){
   const recos=[];
   const limiteSexe=genre==='F'?15:25;
-  if(poids>limiteSexe) recos.push({title:`Réduire le poids unitaire (> ${limiteSexe} kg)`,prio:1,cat:'R',desc:`Poids de ${poids} kg dépasse le seuil recommandé pour un ${genre==='F'?'opérateur féminin':'opérateur masculin'}. Fractionner les charges ou utiliser un équipement de manutention mécanique.`});
+  if(poidsMax>limiteSexe) recos.push({title:`Réduire le poids des charges les plus lourdes (> ${limiteSexe} kg)`,prio:1,cat:'R',desc:`${poidsUniforme?`Poids de ${poidsMax} kg`:`Le levage le plus lourd observé (${poidsMax} kg)`} dépasse le seuil recommandé pour un ${genre==='F'?'opérateur féminin':'opérateur masculin'} (${limiteSexe} kg). Fractionner les charges ou utiliser un équipement de manutention mécanique.`});
+  const prisesRisque={two_bad:'mauvaise prise à deux mains',one:'prise à une main',pinch:'prise en pince / crochets'};
+  if(prisesRisque[typePriseVal]) recos.push({title:'Améliorer la prise sur la charge',prio:2,cat:'C',desc:`Type de prise observé : ${prisesRisque[typePriseVal]}. Prévoir des poignées, sangles ou un équipement d'aide à la préhension pour réduire l'effort et le risque de chute de charge.`});
   if(document.getElementById('chk0').checked) recos.push({title:'Corriger la posture lombaire — formation gestes et postures',prio:2,cat:'C',desc:'Former aux techniques de levage en fente, maintenir le dos droit, utiliser la force des jambes. Revoir la hauteur de prise.'});
   if(document.getElementById('chk1').checked) recos.push({title:'Supprimer les rotations axiales en charge',prio:2,cat:'E',desc:'Réorganiser le poste pour que le pivot se fasse par déplacement des pieds, non par torsion vertébrale. Repositionner les zones de dépôt.'});
   if(document.getElementById('chk2').checked) recos.push({title:'Ajuster les hauteurs de prise (60–120 cm)',prio:1,cat:'R',desc:'Prévoir une table élévatrice ou un quai ajustable. Zone de prise optimale entre 60 et 120 cm du sol.'});
@@ -1699,10 +1772,10 @@ function deleteAnalyse(id){
 function nouvelleObservation(){
   if(S.levages.length>0 && !confirm('Démarrer une nouvelle observation ? Le poste actuel sera réinitialisé (le plan d\'action et l\'historique sont conservés).'))return;
   if(S.interval)clearInterval(S.interval);
-  S.running=false; S.elapsed=0; S.startTime=0; S.levages=[];
+  S.running=false; S.stopped=false; S.analyzed=false; S.elapsed=0; S.startTime=0; S.levages=[];
   S.sessionId='SGT-'+Date.now().toString(36).toUpperCase();
   document.getElementById('sid').textContent=S.sessionId;
-  ['poste','operateur','entite','age','poids','distTransport','notes'].forEach(id=>document.getElementById(id).value='');
+  ['poste','operateur','entite','age','poids','distTransport','notes','poidsCourant'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('genre').value='H';
   document.getElementById('dureePoste').value='7';
   document.getElementById('typePrise').value='two_good';
@@ -1710,15 +1783,17 @@ function nouvelleObservation(){
     document.getElementById('chk'+i).checked=false;
     document.getElementById('pi'+i).classList.remove('sel');
   }
-  updatePenBar();
+  updatePenBar(); updateLevageBtnLabel();
   document.getElementById('timerDig').textContent='00:00:00';
   document.getElementById('timerDig').className='timer-dig';
   document.getElementById('timerLbl').textContent='EN ATTENTE';
   document.getElementById('btnStart').textContent='▶ Démarrer';
   document.getElementById('btnStart').className='btn btn-green btn-lg btn-full';
   document.getElementById('btnStop').disabled=true;
-  document.getElementById('btnLevage').disabled=true;
+  setLevageControlsEnabled(false);
   document.getElementById('poids').disabled=false;
+  document.getElementById('btnAnalyse').disabled=false;
+  document.getElementById('btnAnalyseHint').style.display='none';
   rebuildLog(); updateKPIs(); updateGauge(); updateChart();
   setAlert('idle','💤 En attente de démarrage');
   saveState();
@@ -1740,11 +1815,11 @@ function setFval(id,v){if(v===undefined||v===null)return;const el=document.getEl
 // ou une fermeture d'onglet juste après une action ne doit jamais perdre de données.
 function saveState(){
   const data={
-    sessionId:S.sessionId, elapsed:S.elapsed,
+    sessionId:S.sessionId, elapsed:S.elapsed, stopped:S.stopped, analyzed:S.analyzed,
     levages:S.levages, actions:S.actions, analyses:S.analyses,
     form:{
       poste:fval('poste'),operateur:fval('operateur'),entite:fval('entite'),
-      genre:fval('genre'),age:fval('age'),poids:fval('poids'),
+      genre:fval('genre'),age:fval('age'),poids:fval('poids'),poidsCourant:fval('poidsCourant'),
       distTransport:fval('distTransport'),dureePoste:fval('dureePoste'),
       typePrise:fval('typePrise'),notes:fval('notes'),
       postures:[0,1,2,3,4].map(i=>document.getElementById('chk'+i).checked)
@@ -1762,7 +1837,7 @@ function restoreState(){
   if(data.form){
     const f=data.form;
     setFval('poste',f.poste);setFval('operateur',f.operateur);setFval('entite',f.entite);
-    setFval('genre',f.genre);setFval('age',f.age);setFval('poids',f.poids);
+    setFval('genre',f.genre);setFval('age',f.age);setFval('poids',f.poids);setFval('poidsCourant',f.poidsCourant);
     setFval('distTransport',f.distTransport);setFval('dureePoste',f.dureePoste);
     setFval('typePrise',f.typePrise);setFval('notes',f.notes);
     document.getElementById('genre').dispatchEvent(new Event('change'));
@@ -1771,22 +1846,28 @@ function restoreState(){
       document.getElementById('chk'+i).checked=true;
       document.getElementById('pi'+i).classList.add('sel');
     });
-    updatePenBar();
+    updatePenBar(); updateLevageBtnLabel();
   }
   S.sessionId=data.sessionId||S.sessionId;
   document.getElementById('sid').textContent=S.sessionId;
   S.elapsed=data.elapsed||0;
+  S.stopped=!!data.stopped;
+  S.analyzed=!!data.analyzed;
   S.levages=data.levages||[];
   S.actions=data.actions||[];
   S.analyses=data.analyses||[];
-  if(S.elapsed>0 && S.levages.length>0){
+  if(S.elapsed>0 || S.stopped){
     document.getElementById('timerDig').textContent=fmtTime(Math.floor(S.elapsed/1000));
     document.getElementById('timerDig').className='timer-dig pause';
-    document.getElementById('timerLbl').textContent='EN PAUSE (restauré)';
+    document.getElementById('timerLbl').textContent=S.stopped?'TERMINÉ (restauré)':'EN PAUSE (restauré)';
     document.getElementById('btnStart').textContent='▶ Reprendre';
     document.getElementById('btnStart').className='btn btn-green btn-lg btn-full';
     document.getElementById('btnStop').disabled=false;
-    document.getElementById('btnLevage').disabled=true;
+    setLevageControlsEnabled(false);
+  }
+  if(S.analyzed){
+    document.getElementById('btnAnalyse').disabled=true;
+    document.getElementById('btnAnalyseHint').style.display='block';
   }
   rebuildLog(); updateKPIs(); updateGauge(); updateChart();
   renderActions(); renderHistorique();
@@ -1867,6 +1948,7 @@ function exportRapportCSV(ana,detailRows){
 calcNiosh();
 calcKIM();
 calcReba();
+renderWeightPresets();
 </script>
 
 <!-- MODULE PHOTO — Évaluation posturale guidée sans IA -->

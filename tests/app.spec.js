@@ -56,6 +56,104 @@ test.describe('Observation — validation et saisie', () => {
     await page.keyboard.press('Space');
     await expect(page.locator('#kLevages')).toHaveText('1');
   });
+
+  test('chaque levage peut avoir un poids différent (bagages non uniformes)', async ({ page }) => {
+    await stubChart(page);
+    await page.goto('/index.html');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.fill('#poste', 'Poids variables');
+    await page.fill('#poids', '23');
+    await page.click('#btnStart');
+    await page.click('#btnLevage'); // 23 kg (poids initial repris)
+    await page.click('.weight-chip >> text="15"'); // 15 kg via préréglage rapide
+    await page.fill('#poidsCourant', '32');
+    await page.click('#btnLevage'); // 32 kg saisi manuellement
+    await expect(page.locator('#kMasse')).toHaveText('70.0');
+    const poidsLoggues = await page.locator('.lc-p').allTextContents();
+    expect(poidsLoggues).toEqual(['23kg', '15kg', '32kg']);
+  });
+
+  test('"Arrêter" exige une confirmation avant de pouvoir reprendre', async ({ page }) => {
+    await stubChart(page);
+    await page.goto('/index.html');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.fill('#poste', 'Test stop');
+    await page.fill('#poids', '10');
+    await page.click('#btnStart');
+    await page.click('#btnStop');
+    await expect(page.locator('#timerLbl')).toHaveText('TERMINÉ');
+    let dialogSeen = false;
+    page.once('dialog', (d) => { dialogSeen = true; d.dismiss(); });
+    await page.click('#btnStart');
+    await page.waitForTimeout(100);
+    expect(dialogSeen).toBe(true);
+    expect(await page.evaluate(() => S.running)).toBe(false); // annulée : ne reprend pas
+  });
+
+  test('les préréglages de poids sont inertes tant que l\'observation n\'est pas active', async ({ page }) => {
+    await stubChart(page);
+    await page.goto('/index.html');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.fill('#poste', 'Test puces inertes');
+    await page.fill('#poids', '10');
+    await expect(page.locator('.weight-chip').first()).toBeDisabled();
+    await page.click('#btnStart');
+    await expect(page.locator('.weight-chip').first()).toBeEnabled();
+    page.once('dialog', (d) => d.dismiss());
+    await page.click('#btnStop');
+    await expect(page.locator('.weight-chip').first()).toBeDisabled();
+    // même en forçant un clic JS sur la puce désactivée, aucun levage ne doit être ajouté
+    await page.evaluate(() => document.querySelector('.weight-chip').click());
+    await expect(page.locator('#kLevages')).toHaveText('0');
+  });
+
+  test('l\'état "terminé" survit à un rechargement de page', async ({ page }) => {
+    await stubChart(page);
+    await page.goto('/index.html');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.fill('#poste', 'Test persistance arrêt');
+    await page.fill('#poids', '10');
+    await page.click('#btnStart');
+    await page.click('#btnStop');
+    await page.reload();
+    await expect(page.locator('#timerLbl')).toHaveText('TERMINÉ (restauré)');
+    let dialogSeen = false;
+    page.once('dialog', (d) => { dialogSeen = true; d.dismiss(); });
+    await page.click('#btnStart');
+    await page.waitForTimeout(100);
+    expect(dialogSeen).toBe(true);
+  });
+});
+
+test.describe('Génération de rapport', () => {
+  test('le bouton se désactive après génération et empêche les doublons', async ({ page }) => {
+    await stubChart(page);
+    page.on('dialog', (d) => d.accept());
+    await page.goto('/index.html');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.fill('#poste', 'Anti-doublon');
+    await page.fill('#poids', '20');
+    await page.click('#btnStart');
+    await page.click('#btnLevage');
+    await page.waitForTimeout(5200);
+    await page.click('#btnAnalyse');
+    await expect(page.locator('#btnAnalyse')).toBeDisabled();
+    expect(await page.evaluate(() => S.analyses.length)).toBe(1);
+    // même en forçant un appel direct, le garde-fou interne doit bloquer
+    await page.evaluate(() => lancerAnalyse());
+    expect(await page.evaluate(() => S.analyses.length)).toBe(1);
+    // un nouveau levage réactive le bouton — il faut d'abord reprendre l'observation
+    // (lancerAnalyse() a arrêté le chrono), ce qui redemande confirmation
+    await page.click('.modal-close');
+    await page.click('#btnStart');
+    await page.click('.weight-chip >> nth=0');
+    await expect(page.locator('#btnAnalyse')).toBeEnabled();
+  });
 });
 
 test.describe('Persistance', () => {
@@ -137,7 +235,7 @@ test.describe('KIM', () => {
     await page.goto('/index.html');
     await goPage(page, 'mac');
     const score = await page.evaluate(() => {
-      document.getElementById('kGenre').value = 'H';
+      document.getElementById('genre').value = 'H'; // le genre est repris de la page Observation
       document.getElementById('kPoids').value = '15'; // ipoids=4 pour un homme
       document.getElementById('kDuree').value = '2';   // itemps=3
       document.getElementById('kPosture').value = '1';

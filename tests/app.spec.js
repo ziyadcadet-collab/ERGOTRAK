@@ -91,6 +91,42 @@ test.describe('Observation — validation et saisie', () => {
     expect(dialogSeen).toBe(true);
     expect(await page.evaluate(() => S.running)).toBe(false); // annulée : ne reprend pas
   });
+
+  test('les préréglages de poids sont inertes tant que l\'observation n\'est pas active', async ({ page }) => {
+    await stubChart(page);
+    await page.goto('/index.html');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.fill('#poste', 'Test puces inertes');
+    await page.fill('#poids', '10');
+    await expect(page.locator('.weight-chip').first()).toBeDisabled();
+    await page.click('#btnStart');
+    await expect(page.locator('.weight-chip').first()).toBeEnabled();
+    page.once('dialog', (d) => d.dismiss());
+    await page.click('#btnStop');
+    await expect(page.locator('.weight-chip').first()).toBeDisabled();
+    // même en forçant un clic JS sur la puce désactivée, aucun levage ne doit être ajouté
+    await page.evaluate(() => document.querySelector('.weight-chip').click());
+    await expect(page.locator('#kLevages')).toHaveText('0');
+  });
+
+  test('l\'état "terminé" survit à un rechargement de page', async ({ page }) => {
+    await stubChart(page);
+    await page.goto('/index.html');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.fill('#poste', 'Test persistance arrêt');
+    await page.fill('#poids', '10');
+    await page.click('#btnStart');
+    await page.click('#btnStop');
+    await page.reload();
+    await expect(page.locator('#timerLbl')).toHaveText('TERMINÉ (restauré)');
+    let dialogSeen = false;
+    page.once('dialog', (d) => { dialogSeen = true; d.dismiss(); });
+    await page.click('#btnStart');
+    await page.waitForTimeout(100);
+    expect(dialogSeen).toBe(true);
+  });
 });
 
 test.describe('Génération de rapport', () => {
@@ -111,8 +147,10 @@ test.describe('Génération de rapport', () => {
     // même en forçant un appel direct, le garde-fou interne doit bloquer
     await page.evaluate(() => lancerAnalyse());
     expect(await page.evaluate(() => S.analyses.length)).toBe(1);
-    // un nouveau levage réactive le bouton
+    // un nouveau levage réactive le bouton — il faut d'abord reprendre l'observation
+    // (lancerAnalyse() a arrêté le chrono), ce qui redemande confirmation
     await page.click('.modal-close');
+    await page.click('#btnStart');
     await page.click('.weight-chip >> nth=0');
     await expect(page.locator('#btnAnalyse')).toBeEnabled();
   });

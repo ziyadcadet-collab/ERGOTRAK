@@ -108,6 +108,7 @@ textarea{resize:vertical;min-height:70px}
 .weight-chip{flex:1;min-width:48px;padding:9px 4px;border:1px solid var(--border);background:var(--s2);border-radius:7px;color:var(--dim);font-family:var(--mono);font-size:.83rem;font-weight:600;cursor:pointer;text-align:center;transition:all .15s}
 .weight-chip:hover{border-color:var(--border2);color:var(--text)}
 .weight-chip:active{transform:scale(.95)}
+.weight-chip:disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
 
 /* LEVAGE BTN */
 .levage-btn{background:linear-gradient(135deg,#1a7aff,#0058cc);color:#fff;border:none;border-radius:11px;font-family:var(--sans);font-size:1.1rem;font-weight:800;cursor:pointer;padding:20px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s;box-shadow:0 4px 24px rgba(26,122,255,.3);letter-spacing:.3px;position:relative;overflow:hidden}
@@ -1121,7 +1122,7 @@ function toggleTimer() {
     document.getElementById('btnStop').disabled=false;
     document.getElementById('timerDig').className='timer-dig run';
     document.getElementById('timerLbl').textContent='OBSERVATION EN COURS';
-    document.getElementById('btnLevage').disabled=false;
+    setLevageControlsEnabled(true);
     document.getElementById('poids').disabled=true;
     setAlert('ok','🟢 Observation active — enregistrez chaque levage observé');
   } else {
@@ -1130,7 +1131,7 @@ function toggleTimer() {
     document.getElementById('btnStart').className='btn btn-green btn-lg btn-full';
     document.getElementById('timerDig').className='timer-dig pause';
     document.getElementById('timerLbl').textContent='EN PAUSE';
-    document.getElementById('btnLevage').disabled=true;
+    setLevageControlsEnabled(false);
     setAlert('warn','⏸ Observation en pause');
   }
 }
@@ -1141,7 +1142,8 @@ function stopTimer() {
   document.getElementById('btnStart').className='btn btn-green btn-lg btn-full';
   document.getElementById('timerDig').className='timer-dig done';
   document.getElementById('timerLbl').textContent='TERMINÉ';
-  document.getElementById('btnLevage').disabled=true;
+  setLevageControlsEnabled(false);
+  saveState();
 }
 function tick() {
   S.elapsed=Date.now()-S.startTime;
@@ -1204,7 +1206,11 @@ const POIDS_PRESETS=[10,15,20,23,27,32];
 function renderWeightPresets(){
   const wrap=document.getElementById('poidsPresets');
   if(!wrap||wrap.children.length>0)return;
-  wrap.innerHTML=POIDS_PRESETS.map(kg=>`<button type="button" class="weight-chip" onclick="quickLevage(${kg})">${kg}</button>`).join('');
+  wrap.innerHTML=POIDS_PRESETS.map(kg=>`<button type="button" class="weight-chip" onclick="quickLevage(${kg})" disabled>${kg}</button>`).join('');
+}
+function setLevageControlsEnabled(enabled){
+  document.getElementById('btnLevage').disabled=!enabled;
+  document.querySelectorAll('.weight-chip').forEach(c=>c.disabled=!enabled);
 }
 function updateLevageBtnLabel(){
   const v=parseFloat(document.getElementById('poidsCourant').value);
@@ -1216,6 +1222,7 @@ function quickLevage(kg){
   enrLevage();
 }
 function enrLevage(){
+  if(!S.running){showToast('⚠ Démarrez ou reprenez l\'observation avant d\'enregistrer un levage');return}
   const poids=parseFloat(document.getElementById('poidsCourant').value);
   if(!poids||poids<=0){markError('poidsCourant');showToast('⚠ Saisissez le poids de ce levage');return}
   const dist=parseFloat(document.getElementById('distTransport').value)||0;
@@ -1783,7 +1790,7 @@ function nouvelleObservation(){
   document.getElementById('btnStart').textContent='▶ Démarrer';
   document.getElementById('btnStart').className='btn btn-green btn-lg btn-full';
   document.getElementById('btnStop').disabled=true;
-  document.getElementById('btnLevage').disabled=true;
+  setLevageControlsEnabled(false);
   document.getElementById('poids').disabled=false;
   document.getElementById('btnAnalyse').disabled=false;
   document.getElementById('btnAnalyseHint').style.display='none';
@@ -1849,14 +1856,14 @@ function restoreState(){
   S.levages=data.levages||[];
   S.actions=data.actions||[];
   S.analyses=data.analyses||[];
-  if(S.elapsed>0 && S.levages.length>0){
+  if(S.elapsed>0 || S.stopped){
     document.getElementById('timerDig').textContent=fmtTime(Math.floor(S.elapsed/1000));
     document.getElementById('timerDig').className='timer-dig pause';
     document.getElementById('timerLbl').textContent=S.stopped?'TERMINÉ (restauré)':'EN PAUSE (restauré)';
     document.getElementById('btnStart').textContent='▶ Reprendre';
     document.getElementById('btnStart').className='btn btn-green btn-lg btn-full';
     document.getElementById('btnStop').disabled=false;
-    document.getElementById('btnLevage').disabled=true;
+    setLevageControlsEnabled(false);
   }
   if(S.analyzed){
     document.getElementById('btnAnalyse').disabled=true;

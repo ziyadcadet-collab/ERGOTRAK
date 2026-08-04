@@ -174,6 +174,26 @@ test.describe('Pauses et inactivité — observations longues', () => {
     await page.click('#btnLevage');
     await expect(page.locator('#idleNudge')).toBeHidden();
   });
+
+  test('un rechargement pendant une observation active ne classe pas le temps actif écoulé comme une pause', async ({ page }) => {
+    await stubChart(page);
+    await page.goto('/index.html');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.fill('#poste', 'Test reload actif');
+    await page.fill('#poids', '10');
+    await page.click('#btnStart');
+    await page.waitForTimeout(1200); // temps actif réel avant le rechargement, sans saveState() entre-temps
+    const tBeforeReload = Date.now();
+    await page.reload();
+    const reloadWallMs = Date.now() - tBeforeReload;
+    const elapsed = await page.evaluate(() => S.elapsed);
+    expect(elapsed).toBeGreaterThan(1000); // l'écoulé réel doit être capturé, pas une valeur figée à 0
+    const pauseMs = await page.evaluate(() => getPauseStats().ms);
+    // La pause implicite ne doit couvrir que la fenêtre du rechargement lui-même (quelle que soit
+    // sa durée réelle dans l'environnement de test), pas les 1.2s actives qui l'ont précédée.
+    expect(pauseMs).toBeLessThanOrEqual(reloadWallMs + 300);
+  });
 });
 
 test.describe('Génération de rapport', () => {

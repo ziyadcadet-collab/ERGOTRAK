@@ -1180,14 +1180,24 @@ function pad(n){return n<10?'0'+n:n}
 // l'écran ne doit pas se verrouiller (et le chrono être suspendu par l'OS) en cours de route.
 // ═══════════════════════════════════════════════════════
 let wakeLock=null;
+let wakeLockToken=0;
 async function requestWakeLock(){
   if(!('wakeLock' in navigator))return;
+  const myToken=++wakeLockToken;
   try{
-    wakeLock=await navigator.wakeLock.request('screen');
-    wakeLock.addEventListener('release',()=>{wakeLock=null});
+    const sentinel=await navigator.wakeLock.request('screen');
+    // Si une pause (ou une nouvelle demande) est survenue pendant l'attente, ce verrou est
+    // obsolète : on le relâche immédiatement au lieu de le stocker dans la variable partagée.
+    if(myToken!==wakeLockToken || !S.running){
+      sentinel.release().catch(()=>{});
+      return;
+    }
+    wakeLock=sentinel;
+    wakeLock.addEventListener('release',()=>{ if(wakeLock===sentinel)wakeLock=null });
   }catch(e){}
 }
 function releaseWakeLock(){
+  wakeLockToken++;
   if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null}
 }
 document.addEventListener('visibilitychange',()=>{
@@ -1202,7 +1212,18 @@ function getPauseStats(){
   const ongoing=S.pauseStart?Date.now()-S.pauseStart:0;
   return {count:S.pauses.length+(S.pauseStart?1:0), ms:closed+ongoing};
 }
+let pauseSummaryInterval=null;
+// Tant qu'une pause est en cours, la durée cumulée affichée doit continuer d'avancer
+// (sinon elle reste figée à sa valeur du moment où la pause a commencé).
+function syncPauseSummaryTicker(){
+  if(S.pauseStart && !pauseSummaryInterval){
+    pauseSummaryInterval=setInterval(updatePauseSummary,1000);
+  } else if(!S.pauseStart && pauseSummaryInterval){
+    clearInterval(pauseSummaryInterval); pauseSummaryInterval=null;
+  }
+}
 function updatePauseSummary(){
+  syncPauseSummaryTicker();
   const el=document.getElementById('pauseSummary');
   if(!el)return;
   const {count,ms}=getPauseStats();
@@ -1921,6 +1942,7 @@ function setFval(id,v){if(v===undefined||v===null)return;const el=document.getEl
 function saveState(){
   const data={
     sessionId:S.sessionId, elapsed:S.elapsed, stopped:S.stopped, analyzed:S.analyzed,
+    running:S.running,
     pauses:S.pauses, pauseStart:S.pauseStart, lastActivityTs:S.lastActivityTs,
     levages:S.levages, actions:S.actions, analyses:S.analyses,
     form:{
@@ -1961,6 +1983,13 @@ function restoreState(){
   S.analyzed=!!data.analyzed;
   S.pauses=data.pauses||[];
   S.pauseStart=data.pauseStart||0;
+  // La session était active au moment de l'enregistrement (ex : rechargement de page en cours
+  // d'observation) : le rechargement lui-même est une interruption, on l'enregistre comme une
+  // pause implicite démarrant à l'instant du dernier enregistrement, pour ne pas la faire
+  // disparaître du journal des pauses et de la durée totale sur site.
+  if(data.running && !S.stopped && !S.pauseStart){
+    S.pauseStart=data.savedAt||Date.now();
+  }
   S.lastActivityTs=data.lastActivityTs||Date.now();
   S.levages=data.levages||[];
   S.actions=data.actions||[];

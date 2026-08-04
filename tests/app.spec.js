@@ -129,6 +129,53 @@ test.describe('Observation — validation et saisie', () => {
   });
 });
 
+test.describe('Pauses et inactivité — observations longues', () => {
+  test('les pauses sont comptabilisées et affichées', async ({ page }) => {
+    await stubChart(page);
+    await page.goto('/index.html');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.fill('#poste', 'Test pauses');
+    await page.fill('#poids', '15');
+    await page.click('#btnStart');
+    await page.click('#btnStart'); // pause
+    await expect(page.locator('#pauseSummary')).toBeVisible();
+    await expect(page.locator('#pauseSummary')).toContainText('1 pause');
+    await page.click('#btnStart'); // reprendre
+    expect(await page.evaluate(() => S.pauses.length)).toBe(1);
+  });
+
+  test('un rappel apparaît après une longue inactivité et permet de mettre en pause', async ({ page }) => {
+    await stubChart(page);
+    await page.goto('/index.html');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.fill('#poste', 'Test inactivité');
+    await page.fill('#poids', '15');
+    await page.click('#btnStart');
+    await expect(page.locator('#idleNudge')).toBeHidden();
+    await page.evaluate(() => { S.lastActivityTs = Date.now() - 6 * 60 * 1000; checkIdle(); });
+    await expect(page.locator('#idleNudge')).toBeVisible();
+    await page.click('#idleNudge >> text=Mettre en pause');
+    expect(await page.evaluate(() => S.running)).toBe(false);
+    await expect(page.locator('#idleNudge')).toBeHidden();
+  });
+
+  test('enregistrer un levage masque immédiatement le rappel d\'inactivité', async ({ page }) => {
+    await stubChart(page);
+    await page.goto('/index.html');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.fill('#poste', 'Test inactivité 2');
+    await page.fill('#poids', '15');
+    await page.click('#btnStart');
+    await page.evaluate(() => { S.lastActivityTs = Date.now() - 6 * 60 * 1000; checkIdle(); });
+    await expect(page.locator('#idleNudge')).toBeVisible();
+    await page.click('#btnLevage');
+    await expect(page.locator('#idleNudge')).toBeHidden();
+  });
+});
+
 test.describe('Génération de rapport', () => {
   test('le bouton se désactive après génération et empêche les doublons', async ({ page }) => {
     await stubChart(page);

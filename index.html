@@ -103,6 +103,10 @@ textarea{resize:vertical;min-height:70px}
 .timer-dig.done{color:var(--cyan)}
 .timer-lbl{font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--faint)}
 
+/* PAUSES / INACTIVITÉ */
+.pause-summary{margin-top:10px;font-size:.75rem;color:var(--faint);text-align:center;font-family:var(--mono)}
+.idle-nudge{margin-top:10px;padding:11px 13px;background:var(--orange-g);border:1px solid var(--orange);border-radius:8px;display:flex;flex-direction:column;gap:8px;font-size:.82rem;color:var(--orange)}
+
 /* PRÉRÉGLAGES DE POIDS */
 .weight-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .weight-chip{flex:1;min-width:48px;padding:9px 4px;border:1px solid var(--border);background:var(--s2);border-radius:7px;color:var(--dim);font-family:var(--mono);font-size:.83rem;font-weight:600;cursor:pointer;text-align:center;transition:all .15s}
@@ -506,6 +510,14 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
         <div class="row2">
           <button class="btn btn-green btn-lg btn-full" id="btnStart" onclick="toggleTimer()">▶ Démarrer</button>
           <button class="btn btn-ghost btn-lg btn-full" id="btnStop" onclick="stopTimer()" disabled>⏹ Arrêter</button>
+        </div>
+        <div class="pause-summary" id="pauseSummary" style="display:none"></div>
+        <div class="idle-nudge" id="idleNudge" style="display:none">
+          <span>⏱ Aucun levage depuis <strong id="idleMinutes">5</strong> min — l'opérateur est peut-être en pause.</span>
+          <div class="btn-row">
+            <button class="btn btn-orange" style="font-size:.72rem;padding:6px 10px" onclick="toggleTimer()">⏸ Mettre en pause</button>
+            <button class="btn btn-ghost" style="font-size:.72rem;padding:6px 10px" onclick="dismissIdleNudge()">Ignorer 5 min</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1057,7 +1069,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 // ═══════════════════════════════════════════════════════
 const S = {
   running:false, stopped:false, analyzed:false, startTime:0, elapsed:0, interval:null,
-  levages:[], analyses:[], actions:[],
+  levages:[], analyses:[], actions:[], pauses:[], pauseStart:0, lastActivityTs:0,
   sessionId:'SGT-'+Date.now().toString(36).toUpperCase()
 };
 document.getElementById('sid').textContent = S.sessionId;
@@ -1115,6 +1127,8 @@ function toggleTimer() {
       document.getElementById('poidsCourant').value=p;
       updateLevageBtnLabel();
     }
+    if(S.pauseStart){S.pauses.push({start:S.pauseStart,end:Date.now()});S.pauseStart=0}
+    S.lastActivityTs=Date.now();
     S.running=true; S.startTime=Date.now()-S.elapsed;
     S.interval=setInterval(tick,100);
     document.getElementById('btnStart').textContent='⏸ Pause';
@@ -1125,24 +1139,29 @@ function toggleTimer() {
     setLevageControlsEnabled(true);
     document.getElementById('poids').disabled=true;
     setAlert('ok','🟢 Observation active — enregistrez chaque levage observé');
+    requestWakeLock(); startIdleWatch(); updatePauseSummary(); saveState();
   } else {
     S.running=false; clearInterval(S.interval); S.elapsed=Date.now()-S.startTime;
+    S.pauseStart=Date.now();
     document.getElementById('btnStart').textContent='▶ Reprendre';
     document.getElementById('btnStart').className='btn btn-green btn-lg btn-full';
     document.getElementById('timerDig').className='timer-dig pause';
     document.getElementById('timerLbl').textContent='EN PAUSE';
     setLevageControlsEnabled(false);
     setAlert('warn','⏸ Observation en pause');
+    releaseWakeLock(); stopIdleWatch(); updatePauseSummary(); saveState();
   }
 }
 function stopTimer() {
   if(S.running){S.running=false;clearInterval(S.interval);S.elapsed=Date.now()-S.startTime}
+  if(S.pauseStart){S.pauses.push({start:S.pauseStart,end:Date.now()});S.pauseStart=0}
   S.stopped=true;
   document.getElementById('btnStart').textContent='▶ Reprendre';
   document.getElementById('btnStart').className='btn btn-green btn-lg btn-full';
   document.getElementById('timerDig').className='timer-dig done';
   document.getElementById('timerLbl').textContent='TERMINÉ';
   setLevageControlsEnabled(false);
+  releaseWakeLock(); stopIdleWatch(); updatePauseSummary();
   saveState();
 }
 function tick() {
@@ -1155,6 +1174,79 @@ function fmtTime(s){
   return pad(Math.floor(s/3600))+':'+pad(Math.floor((s%3600)/60))+':'+pad(s%60);
 }
 function pad(n){return n<10?'0'+n:n}
+
+// ═══════════════════════════════════════════════════════
+// VERROU D'ÉCRAN — une observation peut durer longtemps sur le terrain,
+// l'écran ne doit pas se verrouiller (et le chrono être suspendu par l'OS) en cours de route.
+// ═══════════════════════════════════════════════════════
+let wakeLock=null;
+async function requestWakeLock(){
+  if(!('wakeLock' in navigator))return;
+  try{
+    wakeLock=await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release',()=>{wakeLock=null});
+  }catch(e){}
+}
+function releaseWakeLock(){
+  if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null}
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&S.running&&!wakeLock)requestWakeLock();
+});
+
+// ═══════════════════════════════════════════════════════
+// PAUSES — journal des interruptions (pauses opérateur, arrêts terrain)
+// ═══════════════════════════════════════════════════════
+function getPauseStats(){
+  const closed=S.pauses.reduce((sum,p)=>sum+(p.end-p.start),0);
+  const ongoing=S.pauseStart?Date.now()-S.pauseStart:0;
+  return {count:S.pauses.length+(S.pauseStart?1:0), ms:closed+ongoing};
+}
+function updatePauseSummary(){
+  const el=document.getElementById('pauseSummary');
+  if(!el)return;
+  const {count,ms}=getPauseStats();
+  if(count===0){el.style.display='none';return}
+  el.style.display='block';
+  const min=Math.round(ms/60000);
+  el.textContent=`⏸ ${count} pause${count>1?'s':''} — ${min} min cumulée${min>1?'s':''}`;
+}
+
+// ═══════════════════════════════════════════════════════
+// DÉTECTION D'INACTIVITÉ — rappelle de mettre en pause si l'opérateur
+// semble s'être arrêté sans que l'observateur ne l'ait indiqué.
+// ═══════════════════════════════════════════════════════
+const IDLE_THRESHOLD_MS=5*60*1000;
+let idleCheckInterval=null, idleSnoozeUntil=0;
+function startIdleWatch(){
+  stopIdleWatch();
+  idleCheckInterval=setInterval(checkIdle,15000);
+}
+function stopIdleWatch(){
+  if(idleCheckInterval)clearInterval(idleCheckInterval);
+  idleCheckInterval=null;
+  hideIdleNudge();
+}
+function checkIdle(){
+  if(!S.running)return;
+  if(Date.now()<idleSnoozeUntil)return;
+  const since=Date.now()-S.lastActivityTs;
+  if(since>=IDLE_THRESHOLD_MS)showIdleNudge(since); else hideIdleNudge();
+}
+function showIdleNudge(sinceMs){
+  const el=document.getElementById('idleNudge');
+  if(!el)return;
+  document.getElementById('idleMinutes').textContent=Math.floor(sinceMs/60000);
+  el.style.display='flex';
+}
+function hideIdleNudge(){
+  const el=document.getElementById('idleNudge');
+  if(el)el.style.display='none';
+}
+function dismissIdleNudge(){
+  idleSnoozeUntil=Date.now()+5*60*1000;
+  hideIdleNudge();
+}
 
 // ═══════════════════════════════════════════════════════
 // SEUIL GENRE
@@ -1232,6 +1324,7 @@ function enrLevage(){
   const interval=prev?(now-prev.ts)/1000:null;
   const rythme=interval?(60/interval).toFixed(1):null;
   S.levages.push({ts:now,tSec,poids,dist,rythme});
+  S.lastActivityTs=now; hideIdleNudge();
   updateKPIs(); addLogRow(S.levages.length,tSec,poids,getTotalMasse(),rythme);
   updateGauge(); updateChart();
   S.analyzed=false; saveState();
@@ -1621,6 +1714,11 @@ function lancerAnalyse(){
   const mins=Math.floor(secsTotal/60), secs=secsTotal%60;
   const tMin=secsTotal/60;
   const rythme=tMin>0?(n/tMin).toFixed(1):'—';
+  const pauseStats=getPauseStats();
+  const pauseSec=Math.round(pauseStats.ms/1000);
+  const pauseMinAff=Math.floor(pauseSec/60), pauseSecAff=pauseSec%60;
+  const dureeTotaleSec=secsTotal+pauseSec;
+  const dureeTotaleMin=Math.floor(dureeTotaleSec/60), dureeTotaleSecAff=dureeTotaleSec%60;
   const now=new Date();
   const dateStr=now.toLocaleDateString('fr-FR')+' à '+now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
   let verdict;
@@ -1642,7 +1740,10 @@ function lancerAnalyse(){
   window.lastRapport={ana,rows:[
     ['Identification','Poste',poste],['Identification','Opérateur',operateur],['Identification','Entité / Site',entite],
     ['Identification','Genre',genre==='F'?'Femme':'Homme'],['Identification','Âge',age],['Identification','Session',S.sessionId],['Identification','Date',dateStr],
-    ['Métriques','Durée du poste saisi (h)',dureeH],['Métriques','Durée observée (s)',secsTotal],['Métriques','Poids des charges',poidsAff],
+    ['Métriques','Durée du poste saisi (h)',dureeH],['Métriques','Durée active observée (s)',secsTotal],
+    ['Métriques','Pauses',pauseStats.count],['Métriques','Temps de pause cumulé (s)',pauseSec],
+    ['Métriques','Durée totale sur site (actif + pauses, s)',dureeTotaleSec],
+    ['Métriques','Poids des charges',poidsAff],
     ['Métriques','Type de prise observé',typePriseLabel],
     ['Métriques','Nombre de levages',n],['Métriques','Cadence (lev/min)',rythme],['Métriques','Distance transport (m)',dist],['Métriques','Tonnage total (kg)',masse.toFixed(1)],
     ['Réglementaire','Seuil journalier (kg)',sb],['Réglementaire','Seuil ajusté (kg)',sa.toFixed(0)],['Réglementaire','Charge relative (%)',Math.round(pct)],
@@ -1662,7 +1763,9 @@ function lancerAnalyse(){
     </div>
     <div class="msec"><div class="msec-title">📊 Métriques d'observation</div>
       <div class="rrow"><span>Durée du poste saisi</span><strong>${dureeH} h</strong></div>
-      <div class="rrow"><span>Durée observée</span><strong>${mins} min ${secs} sec</strong></div>
+      <div class="rrow"><span>Durée active observée</span><strong>${mins} min ${secs} sec</strong></div>
+      ${pauseStats.count>0?`<div class="rrow"><span>Pauses</span><strong>${pauseStats.count} — ${pauseMinAff} min ${pauseSecAff} sec cumulées</strong></div>
+      <div class="rrow"><span>Durée totale sur site</span><strong>${dureeTotaleMin} min ${dureeTotaleSecAff} sec</strong></div>`:''}
       <div class="rrow"><span>Poids des charges observées</span><strong>${poidsAff}</strong></div>
       <div class="rrow"><span>Type de prise observé</span><strong>${typePriseLabel}</strong></div>
       <div class="rrow"><span>Nombre de levages</span><strong>${n}</strong></div>
@@ -1773,6 +1876,8 @@ function nouvelleObservation(){
   if(S.levages.length>0 && !confirm('Démarrer une nouvelle observation ? Le poste actuel sera réinitialisé (le plan d\'action et l\'historique sont conservés).'))return;
   if(S.interval)clearInterval(S.interval);
   S.running=false; S.stopped=false; S.analyzed=false; S.elapsed=0; S.startTime=0; S.levages=[];
+  S.pauses=[]; S.pauseStart=0; S.lastActivityTs=0;
+  releaseWakeLock(); stopIdleWatch(); idleSnoozeUntil=0;
   S.sessionId='SGT-'+Date.now().toString(36).toUpperCase();
   document.getElementById('sid').textContent=S.sessionId;
   ['poste','operateur','entite','age','poids','distTransport','notes','poidsCourant'].forEach(id=>document.getElementById(id).value='');
@@ -1794,7 +1899,7 @@ function nouvelleObservation(){
   document.getElementById('poids').disabled=false;
   document.getElementById('btnAnalyse').disabled=false;
   document.getElementById('btnAnalyseHint').style.display='none';
-  rebuildLog(); updateKPIs(); updateGauge(); updateChart();
+  rebuildLog(); updateKPIs(); updateGauge(); updateChart(); updatePauseSummary();
   setAlert('idle','💤 En attente de démarrage');
   saveState();
   showToast('🔄 Nouvelle observation prête');
@@ -1816,6 +1921,7 @@ function setFval(id,v){if(v===undefined||v===null)return;const el=document.getEl
 function saveState(){
   const data={
     sessionId:S.sessionId, elapsed:S.elapsed, stopped:S.stopped, analyzed:S.analyzed,
+    pauses:S.pauses, pauseStart:S.pauseStart, lastActivityTs:S.lastActivityTs,
     levages:S.levages, actions:S.actions, analyses:S.analyses,
     form:{
       poste:fval('poste'),operateur:fval('operateur'),entite:fval('entite'),
@@ -1853,6 +1959,9 @@ function restoreState(){
   S.elapsed=data.elapsed||0;
   S.stopped=!!data.stopped;
   S.analyzed=!!data.analyzed;
+  S.pauses=data.pauses||[];
+  S.pauseStart=data.pauseStart||0;
+  S.lastActivityTs=data.lastActivityTs||Date.now();
   S.levages=data.levages||[];
   S.actions=data.actions||[];
   S.analyses=data.analyses||[];
@@ -1865,6 +1974,7 @@ function restoreState(){
     document.getElementById('btnStop').disabled=false;
     setLevageControlsEnabled(false);
   }
+  updatePauseSummary();
   if(S.analyzed){
     document.getElementById('btnAnalyse').disabled=true;
     document.getElementById('btnAnalyseHint').style.display='block';

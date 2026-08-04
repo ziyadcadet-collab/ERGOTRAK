@@ -1956,6 +1956,19 @@ function saveState(){
   };
   try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}catch(e){}
 }
+// tick() ne persiste jamais l'écoulé (appelé 10x/s, ce serait coûteux) : sans ce filet, un
+// rechargement en cours d'observation utiliserait un `savedAt`/`elapsed` vieux du dernier
+// levage ou champ modifié, et la pause implicite reconstruite à la restauration engloberait à
+// tort toute la période active écoulée depuis. On capture donc l'écoulé réel et l'instant précis
+// juste avant que la page ne parte (rechargement, fermeture d'onglet, mise en arrière-plan).
+function saveOnExit(){
+  if(S.running)S.elapsed=Date.now()-S.startTime;
+  saveState();
+}
+window.addEventListener('pagehide',saveOnExit);
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden')saveOnExit();
+});
 function restoreState(){
   let data;
   try{data=JSON.parse(localStorage.getItem(STORAGE_KEY))}catch(e){data=null}

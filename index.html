@@ -1895,7 +1895,7 @@ function lancerAnalyse(){
       <div class="rrow"><span>Distance de transport</span><strong>${dist} m / levage</strong></div>
     </div>
     <div class="msec"><div class="msec-title">🦴 Pénalités posturales</div>
-      <div class="msec-note">Facteur pondéré selon le nombre de levages réellement concernés — pas la case cochée au moment de générer ce rapport.</div>
+      <div class="msec-note">Chaque levage pèse selon son propre poids ET sa propre posture au moment où il a été enregistré (un bagage lourd en mauvaise posture pèse plus qu'un bagage léger) — pas la case cochée à l'écran au moment de générer ce rapport.</div>
       ${penHtml}
       <div class="rrow" style="border-top:1px solid var(--border);margin-top:5px;padding-top:5px"><span>Coefficient résultant (moyenne pondérée sur ${n} levage${n>1?'s':''})</span><strong>${(coeff*100).toFixed(0)}%</strong></div>
     </div>

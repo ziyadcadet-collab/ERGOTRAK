@@ -221,6 +221,31 @@ test.describe('Génération de rapport', () => {
     await page.click('.weight-chip >> nth=0');
     await expect(page.locator('#btnAnalyse')).toBeEnabled();
   });
+
+  test('à l\'impression/export PDF, seul le rapport ouvert est visible et le tonnage reste lisible', async ({ page }) => {
+    await stubChart(page);
+    page.on('dialog', (d) => d.accept());
+    await page.goto('/index.html');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.fill('#poste', 'Test impression');
+    await page.fill('#poids', '20');
+    await page.click('#btnStart');
+    await page.click('#btnLevage');
+    await page.waitForTimeout(5200);
+    await page.click('#btnAnalyse');
+    await page.emulateMedia({ media: 'print' });
+    // les deux .overlay/.modal existent dans le DOM (rapport + confidentialité) : seul celui
+    // réellement ouvert doit apparaître à l'impression, l'autre ne doit pas se superposer dessus.
+    // (#modalOverlay lui-même reste visibility:hidden par la règle générale ; c'est sa .modal
+    // fille qui est explicitement re-basculée en visible — voir la règle @media print.)
+    await expect(page.locator('#modalOverlay .modal')).toBeVisible();
+    await expect(page.locator('#privacyOverlay')).toBeHidden();
+    // une valeur clé du rapport ne doit pas être blanc-sur-blanc (illisible sur fond papier)
+    const row = page.locator('.rrow', { hasText: 'Tonnage brut déplacé' });
+    const color = await row.locator('strong').evaluate((el) => getComputedStyle(el).color);
+    expect(color).not.toBe('rgb(255, 255, 255)');
+  });
 });
 
 test.describe('Posture et prise par levage', () => {

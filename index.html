@@ -170,14 +170,16 @@ textarea{resize:vertical;min-height:70px}
 
 /* LOG TABLE */
 .log-wrap{background:var(--bg);border:1px solid var(--border);border-radius:8px;overflow:hidden}
-.log-head{display:grid;grid-template-columns:40px 80px 70px 75px 70px 1fr;padding:7px 12px;background:var(--s2);border-bottom:1px solid var(--border);font-size:.65rem;text-transform:uppercase;letter-spacing:.5px;color:var(--faint);font-weight:600}
+.log-head{display:grid;grid-template-columns:40px 80px 70px 75px 70px 34px;padding:7px 12px;background:var(--s2);border-bottom:1px solid var(--border);font-size:.65rem;text-transform:uppercase;letter-spacing:.5px;color:var(--faint);font-weight:600}
 .log-body{max-height:220px;overflow-y:auto}
 .log-body::-webkit-scrollbar{width:3px}.log-body::-webkit-scrollbar-thumb{background:var(--border2)}
-.log-row{display:grid;grid-template-columns:40px 80px 70px 75px 70px 1fr;padding:7px 12px;border-bottom:1px solid rgba(30,61,99,.4);font-size:.8rem;font-family:var(--mono);animation:ri .2s ease}
+.log-row{display:grid;grid-template-columns:40px 80px 70px 75px 70px 34px;align-items:center;padding:7px 12px;border-bottom:1px solid rgba(30,61,99,.4);font-size:.8rem;font-family:var(--mono);animation:ri .2s ease}
 .log-row:last-child{border-bottom:none}
 .log-row:hover{background:var(--s2)}
 @keyframes ri{from{opacity:0;transform:translateX(-5px)}to{opacity:1;transform:none}}
-.lc-n{color:var(--faint)}.lc-t{color:var(--cyan)}.lc-p{color:#fff;font-weight:600}.lc-c{color:var(--dim)}.lc-r{font-size:.7rem}.lc-r.ok{color:var(--green)}.lc-r.warn{color:var(--orange)}.lc-n2{color:var(--dim);font-size:.75rem}
+.lc-n{color:var(--faint)}.lc-t{color:var(--cyan)}.lc-p{color:#fff;font-weight:600}.lc-c{color:var(--dim)}.lc-r{font-size:.7rem}.lc-r.ok{color:var(--green)}.lc-r.warn{color:var(--orange)}
+.lc-del{background:transparent;border:1px solid transparent;color:var(--faint);border-radius:5px;width:24px;height:24px;font-size:.72rem;cursor:pointer;transition:all .15s;justify-self:center}
+.lc-del:hover{color:var(--red);border-color:var(--red);background:var(--red-g)}
 .log-empty{padding:24px;text-align:center;color:var(--faint);font-size:.78rem}
 
 /* POSTURE CHECK */
@@ -339,8 +341,8 @@ textarea{resize:vertical;min-height:70px}
 }
 @media(max-width:600px){
   .g2,.g3,.g4{grid-template-columns:1fr}
-  .log-head,.log-row{grid-template-columns:35px 70px 60px 65px 60px}
-  .log-head>:last-child,.log-row>:last-child{display:none}
+  .log-head,.log-row{grid-template-columns:28px 62px 52px 58px 30px}
+  .log-head>:nth-child(5),.log-row>:nth-child(5){display:none}
 }
 
 /* SIGNATURE: scan line sur le header nav */
@@ -396,6 +398,13 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
     max-height:calc(100vh - 52px);overflow-y:auto;
   }
   .nav-tabs.mobile-open .nav-tab{width:100%;text-align:left;padding:12px 14px;font-size:.9rem;min-height:44px}
+  /* Passé sous 1100px, la nav bascule sur le hamburger : la zone de droite doit se réduire au
+     même moment, sinon les libellés complets (Sauvegarde/Restaurer/CSV/Reset) débordent avant
+     que ce seuil ne soit atteint. Sauvegarde/Restaurer/Confidentialité restent accessibles via
+     le menu hamburger (entrées .privacy-tab-mobile ci-dessous). */
+  .nav-right .btn-label{display:none}
+  .nav-right .privacy-btn{display:none}
+  .nav-right .backup-btn{display:none}
 }
 @media(max-width:600px){
   .page{padding:12px}
@@ -403,6 +412,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
   .kim-row,.reba-row{flex-direction:column;align-items:stretch;gap:4px}
   .kim-row label,.reba-row label{width:auto}
   .mac-grid{grid-template-columns:1fr}
+
   .hist-item{flex-direction:column;align-items:flex-start;gap:10px}
   .hist-right{align-self:flex-end}
   .sid{display:none}
@@ -461,10 +471,15 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
     <button class="nav-tab" onclick="goPage('reba')">🦴 REBA</button>
     <button class="nav-tab" onclick="goPage('actions')">✅ Plan d'action</button>
     <button class="nav-tab" onclick="goPage('historique')">🗂 Historique</button>
+    <button class="nav-tab privacy-tab-mobile" onclick="exportBackup();closeMobileMenu()">💾 Sauvegarder la session</button>
+    <button class="nav-tab privacy-tab-mobile" onclick="document.getElementById('restoreFile').click();closeMobileMenu()">📂 Restaurer une sauvegarde</button>
     <button class="nav-tab privacy-tab-mobile" onclick="openPrivacyModal();closeMobileMenu()">🔒 Confidentialité</button>
   </div>
   <div class="nav-right">
     <span class="sid" id="sid">—</span>
+    <button class="btn btn-ghost backup-btn" style="font-size:.72rem;padding:7px 11px" onclick="exportBackup()" aria-label="Télécharger une sauvegarde complète de la session">💾<span class="btn-label"> Sauvegarde</span></button>
+    <button class="btn btn-ghost backup-btn" style="font-size:.72rem;padding:7px 11px" onclick="document.getElementById('restoreFile').click()" aria-label="Restaurer une sauvegarde">📂<span class="btn-label"> Restaurer</span></button>
+    <input type="file" id="restoreFile" accept="application/json" style="display:none" onchange="importBackup(event)">
     <button class="btn btn-ghost" style="font-size:.72rem;padding:7px 11px" onclick="exportCSV()">📥<span class="btn-label"> CSV</span></button>
     <button class="btn btn-ghost" style="font-size:.72rem;padding:7px 11px" onclick="reinitialiserTout()" aria-label="Réinitialiser toutes les données">🗑<span class="btn-label"> Reset</span></button>
     <button class="btn btn-ghost privacy-btn" style="font-size:.72rem;padding:7px 11px" onclick="openPrivacyModal()" aria-label="Confidentialité des données">🔒</button>
@@ -629,7 +644,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
       <div class="card-head"><span class="card-icon">📝</span><span class="card-title">Journal des levages</span><span class="card-badge" id="logBadge">0 entrées</span></div>
       <div class="card-body" style="padding:0">
         <div class="log-wrap" style="border:none;border-radius:0">
-          <div class="log-head"><span>#</span><span>Temps</span><span>Poids</span><span>Cumulé</span><span>/min</span><span>Notes</span></div>
+          <div class="log-head"><span>#</span><span>Temps</span><span>Poids</span><span>Cumulé</span><span>/min</span><span></span></div>
           <div class="log-body" id="logBody"><div class="log-empty" id="logEmpty">Aucun levage enregistré</div></div>
         </div>
       </div>
@@ -1309,12 +1324,32 @@ function onPosture(i){
   cb.checked?item.classList.add('sel'):item.classList.remove('sel');
   updatePenBar(); updateGauge(); saveState();
 }
-function getPenCoeff(){
+function penCoeffFromPostures(postures){
   let p=1;
-  POSPEN.forEach((pen,i)=>{if(document.getElementById('chk'+i).checked)p-=pen});
+  POSPEN.forEach((pen,i)=>{if(postures[i])p-=pen});
   return Math.max(p,0.1);
 }
+function getPenCoeff(){
+  return penCoeffFromPostures([0,1,2,3,4].map(i=>document.getElementById('chk'+i).checked));
+}
 function getPenPct(){return Math.round((1-getPenCoeff())*100)}
+// Charge effective : chaque levage pèse pour sa propre posture (celle capturée à cet instant),
+// pas pour la posture actuellement cochée à l'écran. Un ancien levage sans posture enregistrée
+// (sessions antérieures à cette fonctionnalité) retombe sur la case actuelle, par compatibilité.
+function getMasseEffective(){
+  return S.levages.reduce((sum,l)=>{
+    const pc=l.postures?penCoeffFromPostures(l.postures):getPenCoeff();
+    return sum+l.poids/pc;
+  },0);
+}
+// Coefficient agrégé équivalent, pour affichage seulement (rétro-calculé à partir de la charge
+// effective réelle) : avant tout levage, sert d'aperçu basé sur la case actuellement cochée.
+function getPenCoeffEffectif(){
+  const brute=getTotalMasse();
+  if(brute<=0)return getPenCoeff();
+  const eff=getMasseEffective();
+  return eff>0?brute/eff:getPenCoeff();
+}
 function updatePenBar(){
   const pct=getPenPct();
   document.getElementById('penPct').textContent=pct+'%';
@@ -1357,16 +1392,28 @@ function enrLevage(){
   const prev=S.levages.length>0?S.levages[S.levages.length-1]:null;
   const interval=prev?(now-prev.ts)/1000:null;
   const rythme=interval?(60/interval).toFixed(1):null;
-  S.levages.push({ts:now,tSec,poids,dist,rythme});
+  // La posture et le type de prise peuvent varier d'un bagage à l'autre tout comme le poids :
+  // on capture l'état des cases/du champ AU MOMENT de ce levage précis, pas un réglage figé
+  // pour toute la session.
+  const postures=[0,1,2,3,4].map(i=>document.getElementById('chk'+i).checked);
+  const typePrise=document.getElementById('typePrise').value;
+  S.levages.push({ts:now,tSec,poids,dist,rythme,postures,typePrise});
   S.lastActivityTs=now; hideIdleNudge();
-  updateKPIs(); addLogRow(S.levages.length,tSec,poids,getTotalMasse(),rythme);
+  updateKPIs(); addLogRow(S.levages.length,tSec,poids,getTotalMasse(),rythme,now);
   updateGauge(); updateChart();
   S.analyzed=false; saveState();
   document.getElementById('btnAnalyse').disabled=false;
   document.getElementById('btnAnalyseHint').style.display='none';
   const btn=document.getElementById('btnLevage');
   btn.style.transform='scale(.95)'; setTimeout(()=>btn.style.transform='',120);
-  showToast('+'+poids+' kg enregistré');
+  // Rappel périodique : tout repose sur le localStorage du navigateur, sans sauvegarde
+  // automatique à distance. Sur une session à fort volume, on rappelle régulièrement qu'un
+  // fichier de sauvegarde téléchargeable existe (voir exportBackup()).
+  if(S.levages.length>0&&S.levages.length%50===0){
+    showToast('💾 '+S.levages.length+' levages enregistrés — pensez à télécharger une sauvegarde',4000);
+  }else{
+    showToast('+'+poids+' kg enregistré');
+  }
 }
 function undoLastLevage(){
   if(S.levages.length===0){showToast('⚠ Aucun levage à annuler');return}
@@ -1383,7 +1430,19 @@ function rebuildLog(){
     return;
   }
   let cumul=0;
-  S.levages.forEach((l,i)=>{cumul+=l.poids;addLogRow(i+1,l.tSec,l.poids,cumul,l.rythme)});
+  S.levages.forEach((l,i)=>{cumul+=l.poids;addLogRow(i+1,l.tSec,l.poids,cumul,l.rythme,l.ts)});
+}
+// Corrige une erreur de saisie au milieu du journal (pas seulement le tout dernier levage) :
+// sur une session de plusieurs centaines de levages, une erreur repérée en cours de route ne
+// doit pas obliger à tout annuler jusque-là. Identifié par timestamp (stable même après d'autres
+// suppressions), pas par position dans la liste.
+function deleteLevage(ts){
+  const i=S.levages.findIndex(l=>l.ts===ts);
+  if(i===-1)return;
+  if(!confirm('Supprimer ce levage du journal ?'))return;
+  S.levages.splice(i,1);
+  rebuildLog(); updateKPIs(); updateGauge(); updateChart(); saveState();
+  showToast('🗑 Levage supprimé du journal');
 }
 function getTotalMasse(){return S.levages.reduce((a,l)=>a+l.poids,0)}
 function getTotalDist(){return S.levages.reduce((a,l)=>a+(l.dist||0),0)}
@@ -1396,14 +1455,14 @@ function updateKPIs(){
   document.getElementById('kRythme').textContent=rythme;
   document.getElementById('kDist').textContent=(getTotalDist()).toFixed(0);
 }
-function addLogRow(num,tSec,poids,cumul,rythme){
+function addLogRow(num,tSec,poids,cumul,rythme,ts){
   const empty=document.getElementById('logEmpty');
   if(empty)empty.remove();
   const rClass=rythme&&parseFloat(rythme)>6?'warn':'ok';
   const rText=rythme?rythme+'/min':'—';
   const row=document.createElement('div');
   row.className='log-row';
-  row.innerHTML=`<span class="lc-n">${num}</span><span class="lc-t">${fmtTime(tSec)}</span><span class="lc-p">${poids}kg</span><span class="lc-c">${cumul.toFixed(1)}kg</span><span class="lc-r ${rClass}">${rText}</span><span class="lc-n2">—</span>`;
+  row.innerHTML=`<span class="lc-n">${num}</span><span class="lc-t">${fmtTime(tSec)}</span><span class="lc-p">${poids}kg</span><span class="lc-c">${cumul.toFixed(1)}kg</span><span class="lc-r ${rClass}">${rText}</span><button type="button" class="lc-del" title="Supprimer ce levage" aria-label="Supprimer ce levage" onclick="deleteLevage(${ts})">✕</button>`;
   const body=document.getElementById('logBody');
   body.appendChild(row); body.scrollTop=body.scrollHeight;
   document.getElementById('logBadge').textContent=num+' entrées';
@@ -1414,10 +1473,10 @@ function addLogRow(num,tSec,poids,cumul,rythme){
 // ═══════════════════════════════════════════════════════
 function updateGauge(){
   const sb=getSeuilBase();
-  const sa=sb*getPenCoeff();
-  const masse=getTotalMasse();
-  const pct=sa>0?Math.min((masse/sa)*100,999):0;
-  const restant=Math.max(sa-masse,0);
+  const sa=sb*getPenCoeffEffectif();
+  const masse=getMasseEffective();
+  const pct=sb>0?Math.min((masse/sb)*100,999):0;
+  const restant=Math.max(sb-masse,0);
   const arcLen=251;
   const fill=Math.min(pct/100,1)*arcLen;
   let color=pct>100?'var(--red)':pct>70?'var(--orange)':'var(--green)';
@@ -1740,13 +1799,25 @@ function lancerAnalyse(){
   const dist=parseFloat(document.getElementById('distTransport').value)||0;
   const dureeH=parseFloat(document.getElementById('dureePoste').value)||7;
   const notes=document.getElementById('notes').value;
-  const masse=getTotalMasse();
   const n=S.levages.length;
-  const coeff=getPenCoeff();
+  // Posture et prise capturées levage par levage (voir enrLevage) : on agrège sur l'ensemble de
+  // la session plutôt que de ne lire que le dernier réglage affiché à l'écran. Repli sur le champ
+  // global si un levage plus ancien n'a pas encore ce détail (sessions antérieures à cette version).
+  const postureCounts=[0,1,2,3,4].map(i=>S.levages.filter(l=>l.postures?l.postures[i]:document.getElementById('chk'+i).checked).length);
+  const priseCounts={};
+  S.levages.forEach(l=>{const v=l.typePrise||typePriseVal;priseCounts[v]=(priseCounts[v]||0)+1});
+  const priseDistinct=Object.keys(priseCounts);
+  const typePriseAff=priseDistinct.length<=1?typePriseLabel:priseDistinct.map(v=>{
+    const opt=document.querySelector(`#typePrise option[value="${v}"]`);
+    return `${opt?opt.textContent:v} (${priseCounts[v]})`;
+  }).join(', ');
+  const masseBrute=getTotalMasse();
+  const masseEff=getMasseEffective();
+  const coeff=getPenCoeffEffectif();
   const sb=getSeuilBase();
   const sa=sb*coeff;
-  const pct=sa>0?(masse/sa)*100:0;
-  const penPct=getPenPct();
+  const pct=sb>0?(masseEff/sb)*100:0;
+  const penPct=Math.round((1-coeff)*100);
   const mins=Math.floor(secsTotal/60), secs=secsTotal%60;
   const tMin=secsTotal/60;
   const rythme=tMin>0?(n/tMin).toFixed(1):'—';
@@ -1757,20 +1828,23 @@ function lancerAnalyse(){
   const dureeTotaleMin=Math.floor(dureeTotaleSec/60), dureeTotaleSecAff=dureeTotaleSec%60;
   const now=new Date();
   const dateStr=now.toLocaleDateString('fr-FR')+' à '+now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  // masseEff >= masseBrute toujours (les postures ne font qu'alourdir la charge effective) :
+  // la conformité exige donc les deux, l'alerte ergonomique isole le cas où seule la posture
+  // fait basculer le poste, la surcharge couvre le cas où le tonnage brut dépasse déjà seul.
   let verdict;
-  if(masse<=sa) verdict={icon:'✅',label:'CONFORME',desc:`Le tonnage de ${masse.toFixed(1)} kg respecte le seuil réglementaire ajusté de ${sa.toFixed(0)} kg.`,cls:'ok'};
-  else if(masse<=sb) verdict={icon:'⚠️',label:'ALERTE ERGONOMIQUE',desc:`Le tonnage brut passe, mais les postures défavorables (−${penPct}%) font passer le poste en zone de risque TMS.`,cls:'warn'};
-  else verdict={icon:'🚨',label:'SURCHARGE — DANGER',desc:`Le tonnage de ${masse.toFixed(1)} kg dépasse le seuil de ${sa.toFixed(0)} kg. Risque de lésion si ce rythme est maintenu.`,cls:'danger'};
-  // Pénalités html
-  const PNAMES=['Dos fléchi','Torsion tronc','Hauteur critique','Charge à distance','Posture statique'];
+  if(masseEff<=sb) verdict={icon:'✅',label:'CONFORME',desc:`Le tonnage de ${masseBrute.toFixed(1)} kg respecte le seuil réglementaire ajusté de ${sa.toFixed(0)} kg.`,cls:'ok'};
+  else if(masseBrute<=sb) verdict={icon:'⚠️',label:'ALERTE ERGONOMIQUE',desc:`Le tonnage brut passe, mais les postures défavorables (−${penPct}% en moyenne pondérée) font passer le poste en zone de risque TMS.`,cls:'warn'};
+  else verdict={icon:'🚨',label:'SURCHARGE — DANGER',desc:`Le tonnage de ${masseBrute.toFixed(1)} kg dépasse le seuil de ${sa.toFixed(0)} kg. Risque de lésion si ce rythme est maintenu.`,cls:'danger'};
+  // Pénalités html — agrégées sur l'ensemble des levages (postureCounts), pas sur la case cochée
+  // à l'écran au moment de générer le rapport.
   let penHtml='';
-  POSPEN.forEach((pen,i)=>{if(document.getElementById('chk'+i).checked)penHtml+=`<div class="rrow"><span>⚠ ${PNAMES[i]}</span><strong style="color:var(--orange)">−${Math.round(pen*100)}%</strong></div>`});
+  POSPEN.forEach((pen,i)=>{if(postureCounts[i]>0)penHtml+=`<div class="rrow"><span>⚠ ${PNAMES[i]} — ${postureCounts[i]}/${n} levage${postureCounts[i]>1?'s':''}</span><strong style="color:var(--orange)">−${Math.round(pen*100)}%</strong></div>`});
   if(!penHtml)penHtml=`<div class="rrow"><span>Aucun facteur aggravant</span><strong style="color:var(--green)">0%</strong></div>`;
   // Recos auto
-  const recos=genRecos(poidsMax,masse,sa,penPct,parseFloat(rythme),dist,genre,typePriseVal,poidsUniforme);
+  const recos=genRecos(poidsMax,masseEff,sa,penPct,parseFloat(rythme),dist,genre,priseCounts,poidsUniforme,postureCounts);
   // Ajouter recos au plan d'action auto
   recos.forEach(r=>addAction({title:r.title,prio:r.prio,poste,cat:r.cat,desc:r.desc}));
-  const ana={id:Date.now(),poste,operateur,masse,sa,pct,verdict:verdict.cls,date:dateStr,n,rythme};
+  const ana={id:Date.now(),poste,operateur,masse:masseBrute,sa,pct,verdict:verdict.cls,date:dateStr,n,rythme};
   S.analyses.push(ana);
   renderHistorique(); saveState();
   window.lastRapport={ana,rows:[
@@ -1780,8 +1854,8 @@ function lancerAnalyse(){
     ['Métriques','Pauses',pauseStats.count],['Métriques','Temps de pause cumulé (s)',pauseSec],
     ['Métriques','Durée totale sur site (actif + pauses, s)',dureeTotaleSec],
     ['Métriques','Poids des charges',poidsAff],
-    ['Métriques','Type de prise observé',typePriseLabel],
-    ['Métriques','Nombre de levages',n],['Métriques','Cadence (lev/min)',rythme],['Métriques','Distance transport (m)',dist],['Métriques','Tonnage total (kg)',masse.toFixed(1)],
+    ['Métriques','Type de prise observé',typePriseAff],
+    ['Métriques','Nombre de levages',n],['Métriques','Cadence (lev/min)',rythme],['Métriques','Distance transport (m)',dist],['Métriques','Tonnage total (kg)',masseBrute.toFixed(1)],
     ['Réglementaire','Seuil journalier (kg)',sb],['Réglementaire','Seuil ajusté (kg)',sa.toFixed(0)],['Réglementaire','Charge relative (%)',Math.round(pct)],
     ['Réglementaire','Pénalité posturale (%)',penPct],['Verdict','Statut',verdict.label],['Verdict','Détail',verdict.desc],
     ...(notes?[['Notes','Notes terrain',notes]]:[]),
@@ -1803,20 +1877,20 @@ function lancerAnalyse(){
       ${pauseStats.count>0?`<div class="rrow"><span>Pauses</span><strong>${pauseStats.count} — ${pauseMinAff} min ${pauseSecAff} sec cumulées</strong></div>
       <div class="rrow"><span>Durée totale sur site</span><strong>${dureeTotaleMin} min ${dureeTotaleSecAff} sec</strong></div>`:''}
       <div class="rrow"><span>Poids des charges observées</span><strong>${poidsAff}</strong></div>
-      <div class="rrow"><span>Type de prise observé</span><strong>${typePriseLabel}</strong></div>
+      <div class="rrow"><span>Type de prise observé</span><strong>${typePriseAff}</strong></div>
       <div class="rrow"><span>Nombre de levages</span><strong>${n}</strong></div>
       <div class="rrow"><span>Cadence mesurée</span><strong>${rythme} lev/min</strong></div>
       <div class="rrow"><span>Distance de transport</span><strong>${dist} m / levage</strong></div>
-      <div class="rrow"><span>Tonnage total déplacé</span><strong style="font-size:1.05rem;color:#fff">${masse.toFixed(1)} kg</strong></div>
+      <div class="rrow"><span>Tonnage total déplacé</span><strong style="font-size:1.05rem;color:#fff">${masseBrute.toFixed(1)} kg</strong></div>
     </div>
     <div class="msec"><div class="msec-title">🦴 Pénalités posturales</div>
       ${penHtml}
-      <div class="rrow" style="border-top:1px solid var(--border);margin-top:5px;padding-top:5px"><span>Coefficient résultant</span><strong>${(coeff*100).toFixed(0)}%</strong></div>
+      <div class="rrow" style="border-top:1px solid var(--border);margin-top:5px;padding-top:5px"><span>Coefficient résultant (moyenne pondérée)</span><strong>${(coeff*100).toFixed(0)}%</strong></div>
     </div>
     <div class="msec"><div class="msec-title">⚖️ Calcul réglementaire</div>
       <div class="rrow"><span>Seuil journalier réglementaire (${genre==='F'?'Femme':'Homme'})</span><strong>${sb.toLocaleString('fr')} kg</strong></div>
-      <div class="rrow"><span>Seuil ajusté (postures −${penPct}%)</span><strong>${sa.toFixed(0)} kg</strong></div>
-      <div class="rrow"><span>Tonnage enregistré</span><strong>${masse.toFixed(1)} kg</strong></div>
+      <div class="rrow"><span>Seuil ajusté (postures −${penPct}% en moyenne)</span><strong>${sa.toFixed(0)} kg</strong></div>
+      <div class="rrow"><span>Tonnage enregistré</span><strong>${masseBrute.toFixed(1)} kg</strong></div>
       <div class="rrow"><span>Charge relative</span><strong style="color:${pct>100?'var(--red)':pct>70?'var(--orange)':'var(--green)'}">${Math.round(pct)}%</strong></div>
     </div>
     ${notes?`<div class="msec"><div class="msec-title">📝 Notes terrain</div><div style="font-size:.82rem;color:var(--dim);line-height:1.5">${notes}</div></div>`:''}
@@ -1835,19 +1909,24 @@ function lancerAnalyse(){
   document.getElementById('btnAnalyseHint').style.display='block';
   showToast('✅ Analyse générée — actions ajoutées au plan');
 }
-function genRecos(poidsMax,masse,sa,penPct,rythme,dist,genre,typePriseVal,poidsUniforme){
+const PRISES_RISQUE={two_bad:'mauvaise prise à deux mains',one:'prise à une main',pinch:'prise en pince / crochets'};
+const PNAMES=['Dos fléchi','Torsion tronc','Hauteur critique','Charge à distance','Posture statique'];
+// postureCounts/priseCounts : nombre de levages où chaque facteur a été observé, capturé
+// individuellement à chaque clic sur "Enregistrer" — pas la case cochée à l'écran au moment de
+// générer le rapport, qui ne reflète que le dernier réglage utilisé.
+function genRecos(poidsMax,masseEff,sa,penPct,rythme,dist,genre,priseCounts,poidsUniforme,postureCounts){
   const recos=[];
   const limiteSexe=genre==='F'?15:25;
   if(poidsMax>limiteSexe) recos.push({title:`Réduire le poids des charges les plus lourdes (> ${limiteSexe} kg)`,prio:1,cat:'R',desc:`${poidsUniforme?`Poids de ${poidsMax} kg`:`Le levage le plus lourd observé (${poidsMax} kg)`} dépasse le seuil recommandé pour un ${genre==='F'?'opérateur féminin':'opérateur masculin'} (${limiteSexe} kg). Fractionner les charges ou utiliser un équipement de manutention mécanique.`});
-  const prisesRisque={two_bad:'mauvaise prise à deux mains',one:'prise à une main',pinch:'prise en pince / crochets'};
-  if(prisesRisque[typePriseVal]) recos.push({title:'Améliorer la prise sur la charge',prio:2,cat:'C',desc:`Type de prise observé : ${prisesRisque[typePriseVal]}. Prévoir des poignées, sangles ou un équipement d'aide à la préhension pour réduire l'effort et le risque de chute de charge.`});
-  if(document.getElementById('chk0').checked) recos.push({title:'Corriger la posture lombaire — formation gestes et postures',prio:2,cat:'C',desc:'Former aux techniques de levage en fente, maintenir le dos droit, utiliser la force des jambes. Revoir la hauteur de prise.'});
-  if(document.getElementById('chk1').checked) recos.push({title:'Supprimer les rotations axiales en charge',prio:2,cat:'E',desc:'Réorganiser le poste pour que le pivot se fasse par déplacement des pieds, non par torsion vertébrale. Repositionner les zones de dépôt.'});
-  if(document.getElementById('chk2').checked) recos.push({title:'Ajuster les hauteurs de prise (60–120 cm)',prio:1,cat:'R',desc:'Prévoir une table élévatrice ou un quai ajustable. Zone de prise optimale entre 60 et 120 cm du sol.'});
-  if(document.getElementById('chk3').checked) recos.push({title:'Rapprocher la charge du corps — réimplantation du poste',prio:2,cat:'E',desc:'Zone de travail optimale < 30 cm du corps. Revoir l\'implantation du poste et la position des contenants.'});
+  const risky=Object.keys(PRISES_RISQUE).filter(k=>(priseCounts[k]||0)>0);
+  if(risky.length) recos.push({title:'Améliorer la prise sur la charge',prio:2,cat:'C',desc:`Type(s) de prise à risque observé(s) : ${risky.map(k=>`${PRISES_RISQUE[k]} (${priseCounts[k]} levage${priseCounts[k]>1?'s':''})`).join(', ')}. Prévoir des poignées, sangles ou un équipement d'aide à la préhension pour réduire l'effort et le risque de chute de charge.`});
+  if(postureCounts[0]>0) recos.push({title:'Corriger la posture lombaire — formation gestes et postures',prio:2,cat:'C',desc:`Observé sur ${postureCounts[0]} levage(s). Former aux techniques de levage en fente, maintenir le dos droit, utiliser la force des jambes. Revoir la hauteur de prise.`});
+  if(postureCounts[1]>0) recos.push({title:'Supprimer les rotations axiales en charge',prio:2,cat:'E',desc:`Observé sur ${postureCounts[1]} levage(s). Réorganiser le poste pour que le pivot se fasse par déplacement des pieds, non par torsion vertébrale. Repositionner les zones de dépôt.`});
+  if(postureCounts[2]>0) recos.push({title:'Ajuster les hauteurs de prise (60–120 cm)',prio:1,cat:'R',desc:`Observé sur ${postureCounts[2]} levage(s). Prévoir une table élévatrice ou un quai ajustable. Zone de prise optimale entre 60 et 120 cm du sol.`});
+  if(postureCounts[3]>0) recos.push({title:'Rapprocher la charge du corps — réimplantation du poste',prio:2,cat:'E',desc:`Observé sur ${postureCounts[3]} levage(s). Zone de travail optimale < 30 cm du corps. Revoir l\'implantation du poste et la position des contenants.`});
   if(dist>5) recos.push({title:`Réduire la distance de transport (${dist} m)`,prio:2,cat:'R',desc:`Distance de ${dist} m amplifie la charge physique cumulée. Rapprocher les zones de départ et d\'arrivée ou utiliser des équipements de déplacement.`});
   if(!isNaN(rythme)&&rythme>5) recos.push({title:`Réduire la cadence (mesurée : ${rythme} lev/min)`,prio:2,cat:'C',desc:'Cadence élevée majore la contrainte biomécanique. Prévoir des micro-pauses toutes les 45 min et alterner les tâches.'});
-  if(masse>sa*0.8) recos.push({title:'Mettre en place une rotation des opérateurs',prio:3,cat:'C',desc:'Dépassement ou approche du seuil détecté. Alterner les tâches de manutention avec des activités légères pour répartir la charge physique.'});
+  if(masseEff>sa*0.8) recos.push({title:'Mettre en place une rotation des opérateurs',prio:3,cat:'C',desc:'Dépassement ou approche du seuil détecté. Alterner les tâches de manutention avec des activités légères pour répartir la charge physique.'});
   if(recos.length===0) recos.push({title:'Maintenir les bonnes pratiques',prio:3,cat:'C',desc:'Aucun facteur critique détecté sur cette observation. Maintenir la sensibilisation périodique et la surveillance.'});
   return recos;
 }
@@ -1954,8 +2033,8 @@ function fval(id){const el=document.getElementById(id);return el?el.value:''}
 function setFval(id,v){if(v===undefined||v===null)return;const el=document.getElementById(id);if(el)el.value=v}
 // Écriture synchrone et immédiate (pas de debounce) : sur un outil de terrain, un rechargement
 // ou une fermeture d'onglet juste après une action ne doit jamais perdre de données.
-function saveState(){
-  const data={
+function buildStateSnapshot(){
+  return {
     sessionId:S.sessionId, elapsed:S.elapsed, stopped:S.stopped, analyzed:S.analyzed,
     running:S.running,
     pauses:S.pauses, pauseStart:S.pauseStart, lastActivityTs:S.lastActivityTs,
@@ -1969,7 +2048,37 @@ function saveState(){
     },
     savedAt:Date.now()
   };
-  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}catch(e){}
+}
+function saveState(){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(buildStateSnapshot()))}catch(e){}
+}
+// Filet de sécurité : tout repose sur le localStorage du navigateur (un cache vidé, un
+// téléphone qui plante = des heures d'observation terrain perdues sans recours). Un fichier de
+// sauvegarde téléchargeable permet de reprendre une session sur un autre appareil/navigateur.
+function exportBackup(){
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+  downloadJSON(`ergotrak_sauvegarde_${S.sessionId}_${stamp}.json`,buildStateSnapshot());
+  showToast('💾 Sauvegarde téléchargée');
+}
+let restoringBackup=false;
+function importBackup(e){
+  const file=e.target.files&&e.target.files[0];
+  e.target.value='';
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    let data;
+    try{data=JSON.parse(reader.result)}catch(err){showToast('⚠ Fichier de sauvegarde illisible');return}
+    if(!data||!Array.isArray(data.levages)){showToast('⚠ Ce fichier ne ressemble pas à une sauvegarde ErgoTrak');return}
+    if(!confirm('Restaurer cette sauvegarde ? La session actuellement affichée sera remplacée.'))return;
+    // Sans ce garde-fou, location.reload() déclenche 'pagehide' sur la page encore affichée,
+    // dont le filet de sécurité saveOnExit() réenregistre l'état COURANT (périmé) et écrase la
+    // sauvegarde qu'on vient d'écrire, juste avant que la nouvelle page ne la lise.
+    restoringBackup=true;
+    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}catch(err){showToast('⚠ Impossible d\'écrire la sauvegarde');restoringBackup=false;return}
+    location.reload();
+  };
+  reader.readAsText(file);
 }
 // tick() ne persiste jamais l'écoulé (appelé 10x/s, ce serait coûteux) : sans ce filet, un
 // rechargement en cours d'observation utiliserait un `savedAt`/`elapsed` vieux du dernier
@@ -1977,6 +2086,7 @@ function saveState(){
 // tort toute la période active écoulée depuis. On capture donc l'écoulé réel et l'instant précis
 // juste avant que la page ne parte (rechargement, fermeture d'onglet, mise en arrière-plan).
 function saveOnExit(){
+  if(restoringBackup)return;
   if(S.running)S.elapsed=Date.now()-S.startTime;
   saveState();
 }
@@ -2075,6 +2185,12 @@ function downloadCSV(filename,rows){
   }).join(';')).join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download=filename;
+  a.click();
+}
+function downloadJSON(filename,obj){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(obj,null,2)],{type:'application/json'}));
   a.download=filename;
   a.click();
 }

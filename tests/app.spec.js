@@ -223,6 +223,97 @@ test.describe('Génération de rapport', () => {
   });
 });
 
+test.describe('Posture et prise par levage', () => {
+  test('la posture capturée à chaque levage pèse sur la charge effective, pas la case cochée en fin de session', async ({ page }) => {
+    await stubChart(page);
+    await page.goto('/index.html');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.fill('#poste', 'Test posture par levage');
+    await page.fill('#poids', '20');
+    await page.click('#btnStart');
+    await page.fill('#poidsCourant', '20');
+    await page.click('#btnLevage'); // levage 1 : aucune posture cochée
+    await page.click('#pi0'); // dos fléchi (-25%), coché seulement pour le levage 2 (case masquée : on clique le label)
+    await page.click('#btnLevage'); // levage 2 : posture cochée
+    await page.click('#pi0'); // décochée avant la fin de la session
+    const brute = await page.evaluate(() => getTotalMasse());
+    const eff = await page.evaluate(() => getMasseEffective());
+    expect(brute).toBeCloseTo(40, 5);
+    expect(eff).toBeCloseTo(20 + 20 / 0.75, 5); // seul le 2e levage porte la pénalité posturale
+    const postures = await page.evaluate(() => S.levages.map((l) => l.postures[0]));
+    expect(postures).toEqual([false, true]); // chaque levage garde sa propre capture
+  });
+});
+
+test.describe('Journal des levages', () => {
+  test('un levage au milieu du journal peut être supprimé sans tout annuler', async ({ page }) => {
+    await stubChart(page);
+    page.on('dialog', (d) => d.accept());
+    await page.goto('/index.html');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.fill('#poste', 'Test suppression levage');
+    await page.fill('#poids', '10');
+    await page.click('#btnStart');
+    await page.fill('#poidsCourant', '10'); await page.click('#btnLevage');
+    await page.fill('#poidsCourant', '15'); await page.click('#btnLevage');
+    await page.fill('#poidsCourant', '20'); await page.click('#btnLevage');
+    await expect(page.locator('#kMasse')).toHaveText('45.0');
+    await page.locator('.log-row').nth(1).locator('.lc-del').click(); // supprime le 15kg (au milieu)
+    await expect(page.locator('#kMasse')).toHaveText('30.0');
+    const poids = await page.locator('.lc-p').allTextContents();
+    expect(poids).toEqual(['10kg', '20kg']);
+  });
+});
+
+test.describe('Sauvegarde et restauration', () => {
+  test('exporter une sauvegarde déclenche un téléchargement JSON', async ({ page }) => {
+    await stubChart(page);
+    await page.goto('/index.html');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.fill('#poste', 'Test export sauvegarde');
+    await page.fill('#poids', '20');
+    await page.click('#btnStart');
+    await page.click('#btnLevage');
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.evaluate(() => exportBackup()),
+    ]);
+    expect(download.suggestedFilename()).toMatch(/^ergotrak_sauvegarde_.*\.json$/);
+  });
+
+  test('restaurer un fichier de sauvegarde remplace la session actuellement affichée', async ({ page }) => {
+    await stubChart(page);
+    page.on('dialog', (d) => d.accept());
+    await page.goto('/index.html');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    const backup = {
+      sessionId: 'SGT-TESTBACKUP', elapsed: 60000, stopped: true, analyzed: false, running: false,
+      pauses: [], pauseStart: 0, lastActivityTs: Date.now(),
+      levages: [{ ts: Date.now(), tSec: 10, poids: 27, dist: 0, rythme: null, postures: [false, false, false, false, false], typePrise: 'two_good' }],
+      actions: [], analyses: [],
+      form: {
+        poste: 'Poste restauré', operateur: '', entite: '', genre: 'H', age: '', poids: '27', poidsCourant: '27',
+        distTransport: '0', dureePoste: '7', typePrise: 'two_good', notes: '', postures: [false, false, false, false, false],
+      },
+      savedAt: Date.now(),
+    };
+    await Promise.all([
+      page.waitForNavigation(),
+      page.setInputFiles('#restoreFile', {
+        name: 'sauvegarde.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(JSON.stringify(backup)),
+      }),
+    ]);
+    await expect(page.locator('#poste')).toHaveValue('Poste restauré');
+    await expect(page.locator('#kLevages')).toHaveText('1');
+  });
+});
+
 test.describe('Persistance', () => {
   test('restaure poste et levages après un rechargement', async ({ page }) => {
     await stubChart(page);

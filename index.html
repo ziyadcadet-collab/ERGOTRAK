@@ -295,6 +295,7 @@ textarea{resize:vertical;min-height:70px}
 .msec{margin-bottom:18px}
 .msec:last-child{margin-bottom:0}
 .msec-title{font-size:.68rem;text-transform:uppercase;letter-spacing:.8px;color:var(--faint);font-weight:700;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.msec-note{font-size:.72rem;color:var(--faint);line-height:1.4;margin:-3px 0 8px}
 .rrow{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(30,61,99,.35);font-size:.85rem}
 .rrow:last-child{border:none}
 .rrow span:first-child{color:var(--dim)}
@@ -435,19 +436,28 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 
 /* IMPRESSION / EXPORT PDF : n'imprime que le rapport (modale) ouvert */
 @media print{
+  /* Il peut y avoir plusieurs .overlay/.modal dans le DOM (rapport, confidentialité...) : ne
+     rendre visible que celui réellement ouvert, sinon leurs contenus se superposent à l'impression
+     même quand un seul a été affiché à l'écran. */
   body *{visibility:hidden}
-  .modal,.modal *{visibility:visible}
-  .overlay{position:static;background:none;backdrop-filter:none;display:block;padding:0}
-  .modal{position:absolute;left:0;top:0;width:100%;max-width:100%;max-height:none;overflow:visible;box-shadow:none;border:none;animation:none;background:#fff}
+  /* visibility:hidden conserve la hauteur de mise en page : sans ceci, la nav et la page de fond
+     (souvent plus hautes qu'une page) génèrent des pages blanches dans le PDF imprimé. */
+  .nav,.page{display:none !important}
+  .overlay:not(.open){display:none !important}
+  .overlay.open .modal,.overlay.open .modal *{visibility:visible}
+  .overlay.open{position:static;background:none;backdrop-filter:none;display:block;padding:0}
+  .overlay.open .modal{position:absolute;left:0;top:0;width:100%;max-width:100%;max-height:none;overflow:visible;box-shadow:none;border:none;animation:none;background:#fff}
   .modal-close,.modal-footer{display:none !important}
   .modal-head{border-bottom:1px solid #ccc}
   .modal-title{color:#000}
   .modal-sub{color:#333}
+  .msec{break-inside:avoid}
   .msec-title{color:#555;border-bottom:1px solid #ccc}
+  .msec-note{color:#666}
   .rrow{border-bottom:1px solid #eee;color:#000}
   .rrow span:first-child{color:#555}
   .rrow strong{color:#000}
-  .verdict-box{border:1px solid #999;background:#f5f5f5 !important}
+  .verdict-box{border:1px solid #999;background:#f5f5f5 !important;break-inside:avoid}
   .verdict-title.ok,.verdict-desc,.verdict-title.warn,.verdict-title.danger{color:#000 !important}
   .reco-item{background:#f9f9f9;border-color:#ddd;color:#333;break-inside:avoid}
   .reco-item strong{color:#000}
@@ -1857,7 +1867,9 @@ function lancerAnalyse(){
     ['Métriques','Type de prise observé',typePriseAff],
     ['Métriques','Nombre de levages',n],['Métriques','Cadence (lev/min)',rythme],['Métriques','Distance transport (m)',dist],['Métriques','Tonnage total (kg)',masseBrute.toFixed(1)],
     ['Réglementaire','Seuil journalier (kg)',sb],['Réglementaire','Seuil ajusté (kg)',sa.toFixed(0)],['Réglementaire','Charge relative (%)',Math.round(pct)],
-    ['Réglementaire','Pénalité posturale (%)',penPct],['Verdict','Statut',verdict.label],['Verdict','Détail',verdict.desc],
+    ['Réglementaire','Pénalité posturale (% — moyenne pondérée)',penPct],
+    ...POSPEN.map((pen,i)=>postureCounts[i]>0?['Pénalités posturales',PNAMES[i],`${postureCounts[i]}/${n} levage(s) — −${Math.round(pen*100)}%`]:null).filter(Boolean),
+    ['Verdict','Statut',verdict.label],['Verdict','Détail',verdict.desc],
     ...(notes?[['Notes','Notes terrain',notes]]:[]),
     ...recos.map(r=>['Recommandation',r.title,r.desc])
   ]};
@@ -1881,17 +1893,17 @@ function lancerAnalyse(){
       <div class="rrow"><span>Nombre de levages</span><strong>${n}</strong></div>
       <div class="rrow"><span>Cadence mesurée</span><strong>${rythme} lev/min</strong></div>
       <div class="rrow"><span>Distance de transport</span><strong>${dist} m / levage</strong></div>
-      <div class="rrow"><span>Tonnage total déplacé</span><strong style="font-size:1.05rem;color:#fff">${masseBrute.toFixed(1)} kg</strong></div>
     </div>
     <div class="msec"><div class="msec-title">🦴 Pénalités posturales</div>
+      <div class="msec-note">Chaque levage pèse selon son propre poids ET sa propre posture au moment où il a été enregistré (un bagage lourd en mauvaise posture pèse plus qu'un bagage léger) — pas la case cochée à l'écran au moment de générer ce rapport.</div>
       ${penHtml}
-      <div class="rrow" style="border-top:1px solid var(--border);margin-top:5px;padding-top:5px"><span>Coefficient résultant (moyenne pondérée)</span><strong>${(coeff*100).toFixed(0)}%</strong></div>
+      <div class="rrow" style="border-top:1px solid var(--border);margin-top:5px;padding-top:5px"><span>Coefficient résultant (moyenne pondérée sur ${n} levage${n>1?'s':''})</span><strong>${(coeff*100).toFixed(0)}%</strong></div>
     </div>
     <div class="msec"><div class="msec-title">⚖️ Calcul réglementaire</div>
       <div class="rrow"><span>Seuil journalier réglementaire (${genre==='F'?'Femme':'Homme'})</span><strong>${sb.toLocaleString('fr')} kg</strong></div>
+      <div class="rrow"><span>Tonnage brut déplacé</span><strong style="font-size:1.05rem">${masseBrute.toFixed(1)} kg</strong></div>
       <div class="rrow"><span>Seuil ajusté (postures −${penPct}% en moyenne)</span><strong>${sa.toFixed(0)} kg</strong></div>
-      <div class="rrow"><span>Tonnage enregistré</span><strong>${masseBrute.toFixed(1)} kg</strong></div>
-      <div class="rrow"><span>Charge relative</span><strong style="color:${pct>100?'var(--red)':pct>70?'var(--orange)':'var(--green)'}">${Math.round(pct)}%</strong></div>
+      <div class="rrow"><span>Charge relative (tonnage brut / seuil ajusté)</span><strong style="color:${pct>100?'var(--red)':pct>70?'var(--orange)':'var(--green)'}">${Math.round(pct)}%</strong></div>
     </div>
     ${notes?`<div class="msec"><div class="msec-title">📝 Notes terrain</div><div style="font-size:.82rem;color:var(--dim);line-height:1.5">${notes}</div></div>`:''}
     <div class="verdict-box ${verdict.cls}">
@@ -2197,11 +2209,14 @@ function downloadJSON(filename,obj){
 function exportCSV(){
   if(S.levages.length===0){showToast('⚠ Aucune donnée');return}
   const poste=document.getElementById('poste').value||'inconnu';
-  const rows=[['#','Temps(s)','Poids(kg)','Cumul(kg)','Rythme(/min)','Distance(m)']];
+  const rows=[['#','Temps(s)','Poids(kg)','Cumul(kg)','Rythme(/min)','Distance(m)','Postures aggravantes','Type de prise']];
   let cumul=0;
   S.levages.forEach((l,i)=>{
     cumul+=l.poids;
-    rows.push([i+1,l.tSec,l.poids,cumul.toFixed(1),l.rythme||'—',l.dist||0]);
+    const postureLbl=l.postures?(PNAMES.filter((_,pi)=>l.postures[pi]).join(' / ')||'—'):'—';
+    const priseOpt=l.typePrise?document.querySelector(`#typePrise option[value="${l.typePrise}"]`):null;
+    const priseLbl=priseOpt?priseOpt.textContent:(l.typePrise||'—');
+    rows.push([i+1,l.tSec,l.poids,cumul.toFixed(1),l.rythme||'—',l.dist||0,postureLbl,priseLbl]);
   });
   downloadCSV('ErgoTrackPRO_'+S.sessionId+'_'+poste.replace(/\s/g,'_')+'.csv',rows);
   showToast('📥 Export CSV téléchargé');

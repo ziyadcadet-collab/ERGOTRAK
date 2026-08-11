@@ -269,6 +269,24 @@ test.describe('Posture et prise par levage', () => {
     const postures = await page.evaluate(() => S.levages.map((l) => l.postures[0]));
     expect(postures).toEqual([false, true]); // chaque levage garde sa propre capture
   });
+
+  test('plusieurs facteurs posturaux sur le même levage se combinent en les multipliant, pas en les additionnant', async ({ page }) => {
+    await stubChart(page);
+    await page.goto('/index.html');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.fill('#poste', 'Test cumul postures');
+    await page.fill('#poids', '30');
+    await page.click('#btnStart');
+    await page.fill('#poidsCourant', '30');
+    await page.click('#pi0'); // dos fléchi (-25%)
+    await page.click('#pi1'); // torsion (-25%)
+    await page.click('#btnLevage'); // les deux facteurs s'appliquent à ce seul levage
+    const eff = await page.evaluate(() => getMasseEffective());
+    // Combinaison multiplicative attendue : coeff = 0.75 × 0.75 = 0.5625 (et non 1 - 0.25 - 0.25 = 0.50)
+    expect(eff).toBeCloseTo(30 / 0.5625, 5);
+    expect(eff).not.toBeCloseTo(30 / 0.5, 2); // l'ancien modèle additif ne doit plus s'appliquer
+  });
 });
 
 test.describe('Journal des levages', () => {

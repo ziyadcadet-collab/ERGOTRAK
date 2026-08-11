@@ -1334,9 +1334,15 @@ function onPosture(i){
   cb.checked?item.classList.add('sel'):item.classList.remove('sel');
   updatePenBar(); updateGauge(); saveState();
 }
+// Combinaison multiplicative (comme NIOSH/ISO 11228-1), pas additive : chaque facteur
+// aggravant réduit le coefficient restant plutôt que de se soustraire d'un total commun.
+// Un seul facteur coché donne exactement la même pénalité qu'avant ; plusieurs facteurs
+// cumulés sur le même levage restent sévères sans devenir disproportionnés (ex : 3 facteurs
+// à -25%/-25%/-20% donnaient -70% en additif, soit un poids compté ×3.3 — en multiplicatif,
+// ça donne -55%, un poids compté ×2.2, plus conforme à un calcul NIOSH réel).
 function penCoeffFromPostures(postures){
   let p=1;
-  POSPEN.forEach((pen,i)=>{if(postures[i])p-=pen});
+  POSPEN.forEach((pen,i)=>{if(postures[i])p*=(1-pen)});
   return Math.max(p,0.1);
 }
 function getPenCoeff(){
